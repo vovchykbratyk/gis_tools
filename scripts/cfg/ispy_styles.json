@@ -1,0 +1,8 @@
+[
+  {
+    "typecode": ["Type1", "Type2"],
+    "fillcolor": {"RGB": [255, 125, 80, 25]},
+    "outlinecolor": {"RGB": [255, 127, 80, 65]},
+    "label": "Categorical Label"
+  }
+]
