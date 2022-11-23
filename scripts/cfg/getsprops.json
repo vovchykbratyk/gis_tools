@@ -1,0 +1,134 @@
+{
+  "docid": {
+    "fieldtype": "TEXT",
+    "alias": "DOCID"
+  },
+  "activity": {
+    "fieldtype": "TEXT",
+    "alias": "Activity"
+  },
+  "title": {
+    "fieldtype": "TEXT",
+    "alias": "Report Title"
+  },
+  "classification": {
+    "fieldtype": "TEXT",
+    "alias": "Classification",
+    "length": 128
+  },
+  "code": {
+    "fieldtype": "TEXT",
+    "alias": "Code",
+    "length": 128
+  },
+  "comment": {
+    "fieldtype": "TEXT",
+    "alias": "Comment"
+  },
+  "description": {
+    "fieldtype": "TEXT",
+    "alias": "Description",
+    "length": 128
+  },
+  "entityid": {
+    "fieldtype": "LONG",
+    "alias": "Entity ID"
+  },
+  "equipmentcode": {
+    "fieldtype": "TEXT",
+    "alias": "Equipment Code",
+    "length": 52
+  },
+  "item_type": {
+    "fieldtype": "TEXT",
+    "alias": "Item Type",
+    "length": 52
+  },
+  "movementobject": {
+    "fieldtype": "TEXT",
+    "alias": "Movement Object",
+    "length": 255
+  },
+  "name": {
+    "fieldtype": "TEXT",
+    "alias": "Name",
+    "length": 52
+  },
+  "summary": {
+    "fieldtype": "TEXT",
+    "alias": "Summary"
+    "length": 52
+  },
+  "temporal": {
+    "fieldtype": "DATE",
+    "alias": "Start DTG"
+  },
+  "temporalend": {
+    "fieldtype": "DATE",
+    "alias": "End DTG"
+  },
+  "timestamp": {
+    "fieldtype": "DATE",
+    "alias": "Published DTG"
+  },
+  "type": {
+    "fieldtype": "TEXT",
+    "alias": "Geometric Type",
+    "length": 26
+  },
+  "mgrs": {
+    "fieldtype": "TEXT",
+    "alias": "MGRS",
+    "length": 26
+  },
+  "classificationsource": {
+    "fieldtype": "TEXT",
+    "alias": "Classification Source",
+    "length": 52
+  },
+  "declassifyon": {
+    "fieldtype": "TEXT",
+    "alias": "Declassification DTG"
+  },
+  "timeofaction": {
+    "fieldtype": "DATE",
+    "alias": "Last Modified"
+  },
+  "reporteventtype": {
+    "fieldtype": "TEXT",
+    "alias": "Report Event Type",
+    "length": 52
+  },
+  "analysis": {
+    "fieldtype": "BLOB",
+    "alias": "Analysis"
+  },
+  "aor": {
+    "fieldtype": "TEXT",
+    "alias": "COCOM AOR",
+    "length": 26
+  },
+  "be": {
+    "fieldtype": "TEXT",
+    "alias": "BE Number",
+    "length": 15
+  },
+  "orgid": {
+    "fieldtype": "TEXT",
+    "alias": "Organization",
+    "length": 26
+  },
+  "link": {
+    "fieldtype": "TEXT",
+    "alias": "Report URL"
+  },
+  "sensor": {
+    "fieldtype": "TEXT",
+    "alias": "Sensor Type"
+  },
+  "trigraph": {
+    "fieldtype": "TEXT",
+    "alias": "Country Code (ISO)",
+    "length": 15
+  }
+}
