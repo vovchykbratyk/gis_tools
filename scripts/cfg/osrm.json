@@ -1,0 +1,9 @@
+{
+  "URL": {
+    "BASE": "https://some-osrm-instance/route/v1/driving",
+    "P2P": "_ORIGIN_;_DESTINATION_?overview=simplified&steps=true&alternatives=false&geometries=geojson",
+    "WITH_WAYPOINTS": "_ORIGIN_;_WAYPOINTSTR_;_DESTINATION_?overview=simplified&steps=true&alternatives=false&geometries=geojson",
+    "P2P_ALTS": "_ORIGIN_;_DESTINATION_?overview=simplified&steps=true&alternatives=true&geometries=geojson",
+    "WITH_WAYPOINTS_ALTS": "_ORIGIN_;_WAYPOINTSTR_;_DESTINATION_?overview=simplified&steps=true&alternatives=true&geometries=geojson"
+  }
+}
