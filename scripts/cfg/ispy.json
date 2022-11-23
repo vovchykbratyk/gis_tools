@@ -1,0 +1,11 @@
+{
+  "base_url": "https://",
+  "parameters": {
+    "service": "WFS",
+    "version": "1.0.0",
+    "request": "GetFeature",
+    "typename": "instance:layer",
+    "outputFormat": "json"
+  },
+  "geom_name": "geom"
+}
