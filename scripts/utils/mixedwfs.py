@@ -17,4 +17,13 @@ from arcpki import ArcPKI
 def wfsconfig(config_file):
     with open(config_file, "r") as wc:
         wfs_config = json.load(wc)
-    return wfs_config["BASE_URL"]
+    return wfs_config["GETS_URL"]
+
+
+class MixedWFS:
+    
+    def __init__(self, params:dict, attribute_map_file=None):
+        
+        # Initial config
+        self.now = self._now()
+        self.wfs_config_file = WFS_CONFIG_FILE
