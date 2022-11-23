@@ -176,11 +176,11 @@ class Config:
         """
         root = Tk()
         root.withdraw()
-        pki = str(askopenfilename(filetypes=[("Certificate Authority", ".cer .crt .pem .pfx")], title="Select Certificate Authority Bundle"))
+        ca_bundle = str(askopenfilename(filetypes=[("Certificate Authority", ".cer .crt .pem .pfx")], title="Select Certificate Authority Bundle"))
         root.destroy()
-        ca_name = os.path.split(pki)[1]
+        ca_name = os.path.split(ca_bundle)[1]
         copied_ca = os.path.join(self.user_data_path, ca_name)
-        shutil.copyfile(pki, copied_ca)
+        shutil.copyfile(ca_bundle, copied_ca)
 
         return copied_ca
 
