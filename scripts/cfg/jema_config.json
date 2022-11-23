@@ -1,0 +1,13 @@
+{
+  "params": {
+    "startdate": "",
+    "stopdate": "",
+    "pointwkt": "",
+    "polywkt": "",
+    "radiuskm": ""
+  },
+  "root": "https://",
+  "model_id": "",
+  "input_parameter_set": "",
+  "usr_temp_path": ".arc_jema"
+}
