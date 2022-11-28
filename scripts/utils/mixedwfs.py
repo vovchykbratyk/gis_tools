@@ -145,4 +145,77 @@ class MixedWFS:
                     """
                     fields = []
                     for fieldname, value in atts.items():
-                        
+                        if not self.cast(value):
+                            if fieldname not in [f[0] for f in fields]:
+                                fields.append([fieldname, "TEXT"])
+                        if isinstance(self.cast(value), str):
+                            if fieldname not in [f[0] for f in fields]:
+                                fields.append([fieldname, "TEXT"])
+                        elif isinstance(self.cast(value), memoryview):
+                            if fieldname not in [f[0] for f in fields]:
+                                fields.append([fieldname, "BLOB"])
+                        elif isinstance(self.cast(value), (int, float)):
+                            if fieldname not in [f[0] for f in fields]:
+                                fields.append([fieldname, "DOUBLE"])
+                        elif isinstance(self.cast(value), datetime):
+                            if fieldname not in [f[0] for f in fields]:
+                                fields.append([fieldname, "DATE"])
+                                
+                # Assemble rows
+                row = [self.cast(attribute, self.attmap[field]["fieldtype"]) for field, attribute in atts.items()
+                       if field in [e[0] for e in [f for f in esri_geom[geom.type]["fields"]]]]
+                row.insert(0, geom)
+                esri_geom[geom.type]["rows"].append(row)
+                
+        # Build the feature class(es)
+        out_db = arcpy.mp.ArcGISProject("CURRENT").defaultGeodatabase
+        sr = arcpy.SpatialReference(4326)
+        fc_list = []
+        errors = []
+        
+        for geo_type, data in esri_geom.items():
+            if len(data["rows"]) > 0:
+                out_name = f'{out_prefix}_{self.now}_{data["suffix"]}'
+                out_type = data["type"]
+                fc = arcpy.CreateFeatureclass_management(out_db, out_name, out_type, spatial_reference=sr)
+                arcpy.AddFields_management(fc, data["fields"])
+                for e in data["fields"]:
+                    fc_fields.append(e[0])
+                with arcpy.da.InsertCursor(fc, fc_fields) as cursor:
+                    for row in data["rows"]:
+                        try:
+                            cursor.insertRow(row)
+                            feat_processed_count += 1
+                        except Exception as e:
+                            errors.append(f"{row}\n\t{e}\n")
+                            arcpy.AddWarning(e)
+                            pass
+                fc_list.append(fc)
+                
+        # Error catching
+        error_out_path = "U:/.igea"
+        if not os.path.exists(error_out_path):
+            try:
+                os.mkdir(error_out_path)
+                with open(os.path.join(error_out_path, "wfs_errors.txt"), "w") as errorlog:
+                    errorlog.writelines(errors)
+            except ((OSError, PermissionError)) as e:
+                arcpy.AddWarning(f"Could not create error log file at {error_out_path}: {e}. Skipping error log output.")
+                pass
+            
+        if json_file_output:
+            conversion_log = os.path.join(json_file_output, f"WFS_to_FeatureClass_Run_{self.now}.json")
+            try:
+                with open(conversion_log, "w") as fileout:
+                    fileout.write(str(esri_geom))
+            except (OSError, FileNotFoundError, PermissionError) as e:
+                arcpy.AddWarning(f"Could not write {conversion_log}: {e}")
+                pass
+            
+        arcpy.AddMessage(f"Processed {str(feat_processed_count)} out of {str(feat_total_count)} features"
+                         f" ({round((feat_processed_count / feat_total_count) * 100)}%% success rate)")
+        
+        return fc_list
+    
+    def _now(self):
+        return datetime.now().strftime("%Y%m%dT%H%M%S")
