@@ -92,3 +92,57 @@ class MixedWFS:
         feat_total_count = int(self.wfs_resp["totalFeatures"])
         if feat_total_count == 0:
             arcpy.AddWarning("The WFS query was successful; however, no rows were returned.  Try broadening your search dates or area.")
+            sys.exit()
+        feat_processed_count = 0
+        feats = self.wfs_resp["features"]
+        
+        # Assemble the feature class creation structure
+        esri_geom = {
+            "point": {
+                "type": "POINT",
+                "token": "SHAPE@XY"
+                "suffix": "P"
+                "fields": [],
+                "rows": []
+            },
+            "polyline": {
+                "type": "POLYLINE",
+                "token": "SHAPE@",
+                "suffix": "L",
+                "fields": [],
+                "rows" []
+            },
+            "polygon": {
+                "type": "POLYGON",
+                "token": "SHAPE@",
+                "suffix": "A",
+                "fields": [],
+                "rows": []
+            }
+        }
+        
+        # Populate the structure
+        for feat in feats:
+            geom = arcpy.AsShape(feat["geometry"])
+            if geom.type in esri_geom.keys():
+                atts = dict(feat["properties"])
+                if self.attmap:
+                    """
+                    A field description document (FDD) has been provided.  Build the fields
+                    based on the elements contained in the FDD.
+                    """
+                    for fieldname, val in atts.items():
+                        for k, v in self.attmap.items():
+                            if fieldname == k:
+                                field_def = [fieldname] + list(v.values())
+                                if field_def not in esri_geom[geom.type]["fields"]:
+                                    esri_geom[geom.type]["fields"].append(field_def)
+                else:
+                    """
+                    No FDD has been provided.  Make a good faith attempt to discern
+                    data types (TEXT, DOUBLE, LONG, BLOB, etc.) by seeking through the
+                    result set.
+                    """
+                    fields = []
+                    for fieldname, value in atts.items():
+                        
