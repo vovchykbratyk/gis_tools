@@ -87,7 +87,7 @@ class CoordsToAttributeTable(object):
             with arcpy.da.UpdateCursor(in_fc, ["SHAPE@WKT", "SHAPE@XY", "POINT_X", "POINT_Y", "MGRS"]) as cursor:
                 total_count = 0
                 for row in cursor:
-                    mgrs = arcpy.fromWKT(row[0], in_fc_srs).toCoordString("MGRS")
+                    mgrs = arcpy.FromWKT(row[0], in_fc_srs).toCoordString("MGRS")
                     row[2] = row[1][0]  # POINT_X
                     row[3] = row[1][1]  # POINT_Y
                     row[4] = self.round_mgrs(mgrs)
