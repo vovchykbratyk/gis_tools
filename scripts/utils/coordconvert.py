@@ -1,5 +1,7 @@
 import arcpy
+import json
 import os
+from pathlib import Path
 import re
 import sys
 
@@ -49,7 +51,7 @@ class CoordConvert:
             "MGRS": mgrs_pattern,
             "ArcGIS_Pro_DMS": arc_dms_pattern,
             "DMS": dms_pattern,
-            "ArcGIS_Pro_DD", arc_dd_pattern,
+            "ArcGIS_Pro_DD": arc_dd_pattern,
             "DD": dd_pattern,
             "BENUM": be_pattern
         }
