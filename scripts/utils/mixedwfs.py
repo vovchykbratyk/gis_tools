@@ -31,7 +31,7 @@ class MixedWFS:
         # Build the URL
         self.params = params
         self.payload = "&".join(
-            [f"{k=v}" for k, v in self.params.items()]
+            [f"{k}={v}" for k, v in self.params.items()]
         ).replace(" ", "%20").replace("'", "%27").replace("(", "%28").replace(")", "%29").replace('"', '%22')
         self.url = self.base_url() + self.payload
         arcpy.AddMessage(f"URL: {self.url}")
@@ -100,8 +100,8 @@ class MixedWFS:
         esri_geom = {
             "point": {
                 "type": "POINT",
-                "token": "SHAPE@XY"
-                "suffix": "P"
+                "token": "SHAPE@XY",
+                "suffix": "P",
                 "fields": [],
                 "rows": []
             },
@@ -110,7 +110,7 @@ class MixedWFS:
                 "token": "SHAPE@",
                 "suffix": "L",
                 "fields": [],
-                "rows" []
+                "rows": []
             },
             "polygon": {
                 "type": "POLYGON",
@@ -179,6 +179,7 @@ class MixedWFS:
                 out_type = data["type"]
                 fc = arcpy.CreateFeatureclass_management(out_db, out_name, out_type, spatial_reference=sr)
                 arcpy.AddFields_management(fc, data["fields"])
+                fc_fields = []
                 for e in data["fields"]:
                     fc_fields.append(e[0])
                 with arcpy.da.InsertCursor(fc, fc_fields) as cursor:
