@@ -5,13 +5,6 @@ import sys
 
 # Don't write cache files
 sys.dont_write_bytecode = True
-
-# Dependencies
-try:
-    import mgrs
-except ImportError:
-    arcpy.AddError("Could not find mgrs installed on this system.  Exiting...")
-    sys.exit()
     
     
 class CoordsToAttributeTable(object):
@@ -44,6 +37,17 @@ class CoordsToAttributeTable(object):
     
     def updateMessages(self, parameters):
         return True
+
+    def round_mgrs(self, mgrs_str):
+        if len(mgrs_str) > 15:
+            m = re.search(r"^(\d{1,2}\w{3})(\d+)", mgrs_str).groups()
+            m_grid = m[0]
+            m_coords = m[1]
+            half = len(m_coords)//2
+            easting, northing = m_coords[0:half], m_coords[half:]
+            return f"{m_grid}{easting[:5]}{northing[:5]}"
+        else:
+            return mgrs_str
     
     def execute(self, parameters, messages):
         
@@ -53,6 +57,8 @@ class CoordsToAttributeTable(object):
         in_fc = parameters[0].valueAsText
         d = arcpy.Describe(in_fc)
         fc_path = d.path
+        in_fc_srs = d.spatialReference
+        out_srs = arcpy.SpatialReference(4326)
         gdb_search = re.compile(r"(^._\.gdb).+")
         find_gdb = gdb_search.search(fc_path)
         if find_gdb:
@@ -78,19 +84,14 @@ class CoordsToAttributeTable(object):
         edit.startOperation()
         
         try:
-            with arcpy.da.UpdateCursor(in_fc, ["SHAPE@XY", "POINT_X", "POINT_Y", "MGRS"]) as cursor:
+            with arcpy.da.UpdateCursor(in_fc, ["SHAPE@WKT", "SHAPE@XY", "POINT_X", "POINT_Y", "MGRS"]) as cursor:
                 total_count = 0
                 for row in cursor:
-                    wgs84point = arcpy.PointGeometry(arcpy.Point(row[0][0], row[0][1]), in_fc_srs).projectAs(out_srs)
-                    wgs84point = json.loads(wgs84point.JSON)
-                    point_x = float(wgs84point["x"])
-                    point_y = float(wgs84point["y"])
-                    m = mgrs.MGRS()
-                    c = m.toMGRS(point_y, point_x)
-                    row[1] = point_x
-                    row[2] = point_y
-                    row[3] = c
-                    cursor = updateRow(row)
+                    mgrs = arcpy.fromWKT(row[0], in_fc_srs).toCoordString("MGRS")
+                    row[2] = row[1][0]  # POINT_X
+                    row[3] = row[1][1]  # POINT_Y
+                    row[4] = self.round_mgrs(mgrs)
+                    cursor.updateRow(row)
                     total_count += 1
                     
                 arcpy.AddMessage(f"Finished processing.  Added {str(total_count)} coordinates.")
