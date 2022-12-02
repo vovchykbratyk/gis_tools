@@ -29,7 +29,9 @@ class SurfaceImageToCollada(object):
         self.canRunInBackground = False
         
     def getParameterInfo(self):
-        
+        """
+        Define parameters
+        """
         param0 = arcpy.Parameter(
             displayName="Image Layer",
             name="img_in",
@@ -84,13 +86,13 @@ class SurfaceImageToCollada(object):
             datatype="GPString",
             parameterType="Required",
             direction="Input"
-        )
+        )                
         
         param6.filter.type = "ValueList"
         param6.filter.list = ["Low", "Medium", "High", "Insane"]
         
         return [param0, param1, param2, param3, param4, param5, param6]
-    
+     
     def isLicensed(self):
         return True
     
@@ -192,3 +194,54 @@ class SurfaceImageToCollada(object):
             # Convert flat multipatch to flat collada
             flat_dae_name = os.path.join(folder_out, "flat")
             arcpy.MultipatchToCollada_conversion(fm_name, flat_dae_name, "PREPEND_SOURCE_NAME", "")
+            
+            # Create fishnet terrain tiles
+            arcpy.SetProgressor("default", "creating Collada terrain...")
+            fn_name = os.path.join(scratch, "fishnet")
+            view_desc = arcpy.Describe(mask)
+            origin_coord = str(view_desc.extent.lowerLeft)
+            view_xmin = view_desc.extent.XMin
+            view_ymax = view_desc.extent.YMax
+            y_axis_coord = f"{str(view_xmin)} {str(view_ymax + 10)}"
+            
+            arcpy.CreateFishnet_management(
+                fn_name,
+                origin_coord,
+                y_axis_coord,
+                "0",
+                "0",
+                rows,
+                cols,
+                "",
+                "NO_LABELS",
+                mask,
+                "POLYGON"
+            )
+            
+            # Convert extracted terrain to TIN
+            rtin_name = os.path.join(folder_out, "TIN")
+            arcpy.RasterTin_3d(terrain_xtract, rtin_name, z, "", "1")
+            
+            # Convert TIN to Multipatch
+            fn_mp_name = os.path.join(scratch, "fnmp")
+            arcpy.InterpolatePolyToPatch_3d(rtin_name, fn_name, fn_mp_name, "", "1", "Area", "SArea", "0")
+            
+            # Convert multipatch to Collada
+            terr_dae_name = os.path.join(folder_out, "terrain")
+            arcpy.MultipatchToCollada_conversion(fn_mp_name, terr_dae_name, "PREPEND_NONE", "")
+            
+            # Merge Collada tiles
+            full_terr_mp_name = os.path.join(scratch, "ftmp")
+            arcpy.InterpolatePolyToPatch_3d(rtin_name, mask, full_terr_mp_name, "", "1", "Area", "SArea", "0")
+            full_terr_dae_name = os.path.join(folder_out, "Full")
+            arcpy.MultipatchToCollada_conversion(full_terr_mp_name, full_tterr_dae_name, "PREPEND_SOURCE_NAME", "")
+            
+            # Return licenses
+            arcpy.CheckInExtension("Spatial")
+            arcpy.CheckInExtension("3D")
+            
+            arcpy.AddMessage("Completed conversion.")
+        except arcpy.ExecuteError:
+            arcpy.AddWarning(arcpy.GetMessages())
+            raise arcpy.ExecuteError
+
