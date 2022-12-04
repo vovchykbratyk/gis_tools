@@ -234,7 +234,7 @@ class SurfaceImageToCollada(object):
             full_terr_mp_name = os.path.join(scratch, "ftmp")
             arcpy.InterpolatePolyToPatch_3d(rtin_name, mask, full_terr_mp_name, "", "1", "Area", "SArea", "0")
             full_terr_dae_name = os.path.join(folder_out, "Full")
-            arcpy.MultipatchToCollada_conversion(full_terr_mp_name, full_tterr_dae_name, "PREPEND_SOURCE_NAME", "")
+            arcpy.MultipatchToCollada_conversion(full_terr_mp_name, full_terr_dae_name, "PREPEND_SOURCE_NAME", "")
             
             # Return licenses
             arcpy.CheckInExtension("Spatial")
