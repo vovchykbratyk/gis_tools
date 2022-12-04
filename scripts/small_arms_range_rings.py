@@ -213,7 +213,7 @@ class SmallArmsRangeRings(object):
         Define Parameters.
         """
         param0 = arcpy.Parameter(
-            displayname="Origin Point of Polygon",
+            displayName="Origin Point of Polygon",
             name="in_fc",
             datatype="GPFeatureLayer",
             parameterType="Required",
@@ -329,7 +329,7 @@ class SmallArmsRangeRings(object):
             #Add to map and style 
             lyr = active_map.addDataFromPath(result)
             lyr.name = f"Small Arms Range Rings ({cty})"
-            lsym = lyr.symbolgy
+            lsym = lyr.symbology
             lsym.updateRenderer('UniqueValueRenderer')
 
             lsym.renderer.fields = ['distance']
