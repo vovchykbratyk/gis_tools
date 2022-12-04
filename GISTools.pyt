@@ -8,7 +8,7 @@ sys.dont_write_bytecode = True
 
 # Local imports
 scripts_path = os.path.join(os.path.dirname(__file__), "scripts")
-sys.path.append(scirpts_path)
+sys.path.append(scripts_path)
 
 import add_coordinate_attribute
 #import gets_som_wfs
