@@ -176,8 +176,7 @@ class UTMizer(object):
     def updateMessages(self, parameters):
         return True
     
-    @staticmethod
-    def make_temp_utm_fc(gj_string):
+    def make_temp_utm_fc(self, gj_string):
         sr = arcpy.SpatialReference(4326)
         temp_fc = arcpy.CreateFeatureclass_management(
             "memory", "utmzones", "POLYGON", spatial_reference=sr)
@@ -189,37 +188,9 @@ class UTMizer(object):
                 irows.insertRow([geom, feature["properties"]["EPSG"]])
         return temp_fc
     
-    @staticmethod
-    def get_extent_centroid(layer):
-        for_conversion = None
-        desc = arcpy.Describe(layer)
-        sr = arcpy.Describe(layer).spatialReference
+    def get_extent_centroid(self, layer):
         gcs_sr = arcpy.SpatialReference(4326)
-        
-        if sr.factoryCode != 4326:  # Not in 4326, convert first
-            if desc.dataType in ["FeatureLayer", "FeatureClass"]:
-                temp_converted_location = "memory"
-                temp_converted_name = "twgs84temp"
-                for_conversion = arcpy.Project_management(
-                    layer,
-                    os.path.join(temp_converted_location, temp_converted_name),
-                    gcs_sr
-                )
-            elif desc.dataType in ["RasterLayer", "RasterDataset"]:
-                temp_converted_location = arcpy.env.scratchGDB
-                temp_converted_name = "ToGCSTmp"
-                for_conversion = arcpy.ProjectRaster_management(
-                    layer,
-                    os.path.join(temp_converted_location, temp_converted_name),
-                    gcs_sr
-                )
-            else:
-                arcpy.AddMessage(arcpy.GetMessages())
-                raise arcpy.ExecuteError
-        else:
-            for_conversion = layer
-            
-        extent = arcpy.Describe(for_conversion).extent
+        extent = arcpy.Describe(layer).extent.projectAs(gcs_sr)
         centroid = arcpy.Polygon(
             arcpy.Array(
                 [
@@ -249,13 +220,13 @@ class UTMizer(object):
             in_lyr = parameters[0].valueAsText
             
             arcpy.SetProgressor("default", "Initializing UTM grid...")
-            utm_fc = UTMizer.make_temp_utm_fc(UTMGRID)
+            utm_fc = self.make_temp_utm_fc(UTMGRID)
             
             arcpy.SetProgressor("default", "Getting layer information...")
             in_lyr_desc = arcpy.Describe(in_lyr)
             
             arcpy.SetProgressor("default", "Getting layer centroid...")
-            center = UTMizer.get_extent_centroid(in_lyr)
+            center = self.get_extent_centroid(in_lyr)
             
             center_fc = arcpy.CreateFeatureclass_management(
                 r"in_memory", "layercenter", "POINT", spatial_reference=gcs)
