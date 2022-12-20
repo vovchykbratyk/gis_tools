@@ -2,7 +2,7 @@ import arcpy
 from arcpy.sa import *
 from datetime import datetime
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import sys
 
 arcpy.CheckOutExtension("Spatial")
@@ -11,21 +11,26 @@ arcpy.CheckOutExtension("3D")
 # Disable cache files
 sys.dont_write_bytecode = True
 
+# Globals
+BLENDER_EXE = "C:/Program Files/Blender Foundation/Blender 3.2/blender.exe"
+BLENDER_UTILS = os.path.join(os.path.dirname(__file__), "blender")
+DAE_DOWNGRADE_SCRIPT = os.path.join(BLENDER_UTILS, "dae2dae.py")
+
 
 class ProjectionException(Exception):
     pass
 
 
-class SurfaceImageToCollada(object):
+class TerrainImageToCollada(object):
     
     def __init__(self):
         """
         Converts surface raster and aligned image to a textured Collada model.
         """
         self.category = "3D Utilities"
-        self.name = "SurfaceImageToCollada"
-        self.label = "Surface and Image Rasters to Collada"
-        self.description = "Converts surface raster and aligned image to a textured Collada model"
+        self.name = "TerrainImageToCollada"
+        self.label = "Terrain and Image Rasters to Collada"
+        self.description = "Converts terrain raster and aligned image to a Collada model and texture"
         self.canRunInBackground = False
         
     def getParameterInfo(self):
@@ -54,44 +59,20 @@ class SurfaceImageToCollada(object):
             datatype="GPString",
             parameterType="Required",
             direction="Input"
-        ) 
+        )
         
         param3 = arcpy.Parameter(
-            displayName="Rows",
-            name="rows",
-            datatype="GPLong",
-            parameterType="Optional",
-            direction="Input"
-        ) 
-        
-        param4 = arcpy.Parameter(
-            displayName="Columns",
-            name="cols",
-            datatype="GPLong",
-            parameterType="Optional",
-            direction="Input"
-        ) 
-        
-        param5 = arcpy.Parameter(
-            displayName="Z Value",
-            name="z",
-            datatype="GPLong",
-            parameterType="Optional",
-            direction="Input"
-        ) 
-        
-        param6 = arcpy.Parameter(
-            displayName="Quality",
+            displayName="Vertical Quality",
             name="quality",
             datatype="GPString",
             parameterType="Required",
             direction="Input"
         )                
         
-        param6.filter.type = "ValueList"
-        param6.filter.list = ["Low", "Medium", "High", "Insane"]
+        param3.filter.type = "ValueList"
+        param3.filter.list = ["Low", "Medium", "High", "Insane"]
         
-        return [param0, param1, param2, param3, param4, param5, param6]
+        return [param0, param1, param2, param3]
      
     def isLicensed(self):
         return True
@@ -102,14 +83,30 @@ class SurfaceImageToCollada(object):
     def updateMessages(self, parameters):
         return True
     
-    @staticmethod
-    def now():
-        return datetime.now().strftime("%Y%m%dT%H%M%S")
+    def collada_downgrade(self, dae_path):
+        try:
+            for f in Path(dae_path).rglob("*.dae"):
+                blender_cmd = [BLENDER_EXE, "-b", "-P", DAE_DOWNGRADE_SCRIPT, f]
+                raw_output = subprocess.check_output(
+                    blender_cmd,
+                    shell=True
+                )
+                arcpy.AddMessage(f"Done processing {f}."})
+            return True
+        except subprocess.CalledProcessError as error:
+            arcpy.AddMessage(error.output)
+            return None
+        
+    def get_view_extent_polygon(self, sr):
+        p = arcpy.mp.ArcGISProject("CURRENT")
+        return p.activeView.camera.getExtent().polygon.projectAs(sr)
     
-    @staticmethod
-    def get_home_path():
-        p = arcpy.mp.ArcGISProject("CURRENT").homeFolder
-        return Path(p).resolve()
+    def get_home_path(self):
+        p = arcpy.mp.ArcGISProject("CURRENT")
+        return Path(p.homeFolder).resolve()
+    
+    def now(self):
+        return datetime.now().strftime("%Y%m%dT%H%M%S")
     
     def execute(self, parameters, messages):
         
@@ -123,16 +120,30 @@ class SurfaceImageToCollada(object):
             terrain_in = parameters[1].valueAsText
             out_folder_name = parameters[2].valueAsText
             
-            rows = parameters[3].value
-            cols = parameters[4].value
-            z = parameters[5].value
+            d = arcpy.Describe(img_in)
+            processing_sr = d.spatialReference
+            if processing_sr.factoryCode in [4326, 3857, None]:
+                raise ProjectionException(
+                    "Input data is not projected.  Please ensure all inputs are projected and retry."
+                )
             
-            if not rows:
+            extent_poly = self.get_view_extent_polygon(processing_sr)
+            processing_area = extent_poly.area
+            
+            if processing_area <= 50000:
+                rows = 1
+                cols = 1
+            elif processing_area > 50000 and processing_area <= 100000:
                 rows = 2
-            if not cols:
                 cols = 2
+            elif processing_area > 100000 and processing_area <= 150000:
+                rows = 3
+                cols = 3
+            elif processing_area > 150000:
+                rows = 4
+                cols = 4
                 
-            q = parameters[6].valueAsText
+            q = parameters[3].valueAsText
             if q == "Low":
                 z = 2
             elif q == "Medium":
@@ -140,9 +151,9 @@ class SurfaceImageToCollada(object):
             elif q == "High":
                 z = .5
             elif q == "Insane":
-                z = .05
+                z = .1
                 
-            folder_out = os.path.join(SurfaceImageToCollada.get_home_path(), f"3D/{out_folder_name}")
+            folder_out = os.path.join(self.get_home_path(), f"3D/{out_folder_name}")
             
             if not os.path.exists(folder_out):
                 os.makedirs(folder_out)
