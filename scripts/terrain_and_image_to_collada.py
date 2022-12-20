@@ -81,8 +81,31 @@ class TerrainImageToCollada(object):
         return True
     
     def updateMessages(self, parameters):
-        return True
+        # Check if both layers are projected
+        if parameters[0].altered:
+            img_in_sr = self.check_projection(parameters[0].value)
+            if not img_in_sr:
+                parameters[0].setErrorMessage("Input image must be projected.")
+        
+        if parameters[1].altered:
+            terr_in_sr = self.check_projection(parameters[1].value)
+            if not terr_in_sr:
+                parameters[1].setErrorMessage("Input terrain must be projected.")
+                
+        # If both layers are projected, check if they match
+        if img_in_sr and terr_in_sr:
+            if img_in_sr.factoryCode != terr_in_sr.factoryCode:
+                parameters[0].setErrorMessage(f"Image EPSG:{img_in_sr.factoryCode} does not match terrain.")
+                parameters[1].setErrorMessage(f"Terrain EPSG:{terr_in_sr.factoryCode} does not match image.")      
+        return
     
+    def check_projection(self, param_value):
+        lyr_sr = arcpy.Describe(param_value).spatialReference
+        if lyr_sr.factoryCode in [4326, 3857, None]:
+            return None
+        else:
+            return lyr_sr
+        
     def collada_downgrade(self, dae_path):
         try:
             for f in Path(dae_path).rglob("*.dae"):
@@ -120,13 +143,7 @@ class TerrainImageToCollada(object):
             terrain_in = parameters[1].valueAsText
             out_folder_name = parameters[2].valueAsText
             
-            d = arcpy.Describe(img_in)
-            processing_sr = d.spatialReference
-            if processing_sr.factoryCode in [4326, 3857, None]:
-                raise ProjectionException(
-                    "Input data is not projected.  Please ensure all inputs are projected and retry."
-                )
-            
+            processing_sr = arcpy.Describe(img_in).spatialReference
             extent_poly = self.get_view_extent_polygon(processing_sr)
             processing_area = extent_poly.area
             
@@ -157,14 +174,6 @@ class TerrainImageToCollada(object):
             
             if not os.path.exists(folder_out):
                 os.makedirs(folder_out)
-                
-            d = arcpy.Describe(img_in)
-            layer_in_sr = d.spatialReference
-            if layer_in_sr.factoryCode in [4326, 3857, None]:
-                raise ProjectionException("Input data is not projected.  Please ensure all inputs are projected and retry.")
-                
-            # Get extent polygon
-            p = arcpy.mp.ArcGISProject("CURRENT")
             
             mask = arcpy.CopyFeatures_management(extent_poly, os.path.join(r"in_memory", "mask"))
             
