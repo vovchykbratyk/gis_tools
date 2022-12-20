@@ -108,16 +108,21 @@ class TerrainImageToCollada(object):
         
     def collada_downgrade(self, dae_path):
         try:
+            outputs = []
             for f in Path(dae_path).rglob("*.dae"):
                 blender_cmd = [BLENDER_EXE, "-b", "-P", DAE_DOWNGRADE_SCRIPT, f]
                 raw_output = subprocess.check_output(
                     blender_cmd,
                     shell=True
                 )
+                outputs.append(raw_output)
                 arcpy.AddMessage(f"Done processing {f}."})
-            return True
+            return outputs
         except subprocess.CalledProcessError as error:
+            arcpy.AddMessage("Blender reported the following errors. This may mean nothing but is displayed for informational purposes.")
+            arcpy.AddMessage("-------------------------BEGIN BLENDER ERROR OUTPUT-------------------------")
             arcpy.AddMessage(error.output)
+            arcpy.AddMessage("-------------------------END OF BLENDER ERROR OUTPUT------------------------")
             return None
         
     def get_view_extent_polygon(self, sr):
