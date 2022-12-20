@@ -14,7 +14,7 @@ import add_coordinate_attribute
 #import gets_som_wfs
 import small_arms_range_rings
 import utmizer
-import surface_and_image_to_collada
+import terrain_and_image_to_collada
 #import osrm_for_arcgis
 import amror
 #import arcspy
@@ -26,7 +26,7 @@ CoordsToAttributeTable = add_coordinate_attribute.CoordsToAttributeTable
 #GETSSOM = gets_som_wfs.GETSSOM
 #OSRM = osrm_for_arcgis.OSRM
 SmallArmsRangeRings = small_arms_range_rings.SmallArmsRangeRings
-SurfaceImageToCollada = surface_and_image_to_collada.SurfaceImageToCollada
+TerrainImageToCollada = terrain_and_image_to_collada.TerrainImageToCollada
 UTMizer = utmizer.UTMizer
 AMROR = amror.AreaMaxRiseOverRun
 #PHOTOSEARCH = ground_photos.PHOTOSEARCH
@@ -42,6 +42,6 @@ class Toolbox(object):
             AMROR,
             CoordsToAttributeTable,
             SmallArmsRangeRings,
-            SurfaceImageToCollada,
+            TerrainImageToCollada,
             UTMizer
         ]
