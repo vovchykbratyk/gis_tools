@@ -81,25 +81,18 @@ class TerrainImageToCollada(object):
         return True
     
     def updateMessages(self, parameters):
-        img_in_sr = None
-        terr_in_sr = None
-        
         # Check if both layers are projected
         if parameters[0].altered:
             img_in_sr = self.check_projection(parameters[0].value)
             if not img_in_sr:
                 parameters[0].setErrorMessage("Input image must be projected.")
         
-        if parameters[1].altered:
-            terr_in_sr = self.check_projection(parameters[1].value)
-            if not terr_in_sr:
-                parameters[1].setErrorMessage("Input terrain must be projected.")
-                
-        # If both layers are projected, check if they match
-        if img_in_sr and terr_in_sr:
-            if img_in_sr.factoryCode != terr_in_sr.factoryCode:
-                parameters[0].setErrorMessage(f"Image EPSG:{img_in_sr.factoryCode} does not match terrain.")
-                parameters[1].setErrorMessage(f"Terrain EPSG:{terr_in_sr.factoryCode} does not match image.")      
+            if parameters[1].altered:
+                terr_in_sr = self.check_projection(parameters[1].value)
+                if not terr_in_sr:
+                    parameters[1].setErrorMessage("Input terrain must be projected.")
+                if terr_in_sr.factoryCode != img_in_sr.factoryCode:
+                    parameters[1].setErrorMessage("Input terrain projection does not match input image.")       
         return
     
     def check_projection(self, param_value):
