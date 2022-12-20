@@ -83,25 +83,20 @@ class TerrainImageToCollada(object):
     def updateMessages(self, parameters):
         # Check if both layers are projected
         if parameters[0].altered:
-            img_in_sr = self.check_projection(parameters[0].value)
-            if not img_in_sr:
+            img_in_sr = arcpy.Describe(parameters[0].valueAsText).spatialReference
+            if img_in_sr.type == "Geographic":
                 parameters[0].setErrorMessage("Input image must be projected.")
-        
+                
             if parameters[1].altered:
-                terr_in_sr = self.check_projection(parameters[1].value)
-                if not terr_in_sr:
-                    parameters[1].setErrorMessage("Input terrain must be projected.")
+                terr_in_sr = arcpy.Describe(parameters[1].valueAsText).spatialReference
                 if terr_in_sr.factoryCode != img_in_sr.factoryCode:
-                    parameters[1].setErrorMessage("Input terrain projection does not match input image.")       
-        return
-    
-    def check_projection(self, param_value):
-        lyr_sr = arcpy.Describe(param_value).spatialReference
-        if lyr_sr.factoryCode in [4326, 3857, None]:
-            return None
-        else:
-            return lyr_sr
-        
+                    if terr_in_sr.type != "Geographic":  # Only checking for different projections here
+                        parameters[1].setErrorMessage("Input terrain projection (EPSG:{terr_in_sr.factoryCode}) does not match input image (EPSG:{img_in_sr.factoryCode})")
+        if parameters[1].altered:
+            terr_in_sr = arcpy.Describe(parameters[1].valueAsText).spatialReference
+            if terr_in_sr.type == "Geographic":
+                parameters[1].setErrorMessage("Input terrain must be projected.")
+                
     def collada_downgrade(self, dae_path):
         try:
             outputs = []
