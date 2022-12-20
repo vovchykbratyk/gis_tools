@@ -81,6 +81,9 @@ class TerrainImageToCollada(object):
         return True
     
     def updateMessages(self, parameters):
+        img_in_sr = None
+        terr_in_sr = None
+        
         # Check if both layers are projected
         if parameters[0].altered:
             img_in_sr = self.check_projection(parameters[0].value)
