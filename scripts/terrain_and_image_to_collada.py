@@ -91,7 +91,7 @@ class TerrainImageToCollada(object):
                 terr_in_sr = arcpy.Describe(parameters[1].valueAsText).spatialReference
                 if terr_in_sr.factoryCode != img_in_sr.factoryCode:
                     if terr_in_sr.type != "Geographic":  # Only checking for different projections here
-                        parameters[1].setErrorMessage("Input terrain projection (EPSG:{terr_in_sr.factoryCode}) does not match input image (EPSG:{img_in_sr.factoryCode})")
+                        parameters[1].setErrorMessage(f"Input terrain projection (EPSG:{terr_in_sr.factoryCode}) does not match input image (EPSG:{img_in_sr.factoryCode})")
         if parameters[1].altered:
             terr_in_sr = arcpy.Describe(parameters[1].valueAsText).spatialReference
             if terr_in_sr.type == "Geographic":
