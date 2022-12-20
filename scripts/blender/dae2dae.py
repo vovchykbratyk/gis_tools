@@ -4,6 +4,7 @@ to convert a Collada 1.5 object (output from ArcGIS Pro but not widely
 used in practice) to a Collada 1.4 object (which is more widely used).
 The script is issued as an argument to an invocation of a background
 (no GUI) instance of Blender, e.g.:
+"""
 
 /path/to/blender.exe -b -P dae2dae.py file_to_be_converted.dae
 
