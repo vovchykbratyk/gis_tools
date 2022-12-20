@@ -166,9 +166,7 @@ class TerrainImageToCollada(object):
             # Get extent polygon
             p = arcpy.mp.ArcGISProject("CURRENT")
             
-            arcpy.SetProgressor("default", "Getting extents...")
-            extent_poly = p.activeView.camera.getExtent().polygon.projectAs(layer_in_sr)
-            mask = arcpy.CopyFeatures_management(extent_poly, os.path.join(scratch, "mask"))
+            mask = arcpy.CopyFeatures_management(extent_poly, os.path.join(r"in_memory", "mask"))
             
             # Prep rasters
             arcpy.SetProgressor("default", "Processing rasters...")
@@ -191,7 +189,7 @@ class TerrainImageToCollada(object):
             try:
                 tin = arcpy.CreateTin_3d(
                     tin_name,
-                    spatial_reference=layer_in_sr,
+                    spatial_reference=processing_sr,
                     in_features=tin_params,
                     constrained_delaunay="DELAUNAY")
             except arcpy.ExecuteError:
@@ -251,7 +249,13 @@ class TerrainImageToCollada(object):
             arcpy.CheckInExtension("Spatial")
             arcpy.CheckInExtension("3D")
             
-            arcpy.AddMessage("Completed conversion.")
+            # Do Blender Collada conversion if Blender's available
+            if os.path.exists(BLENDER_EXE):
+                for fp in [full_terr_dae_name, flat_dae_name]:
+                    arcpy.AddMessage(f"Attempting to convert content in {fp} to Collada 1.4...")
+                    self.collada_downgrade(PureWindowsPath(fp))
+            
+            arcpy.AddMessage("Completed processing.")
         except arcpy.ExecuteError:
             arcpy.AddWarning(arcpy.GetMessages())
             raise arcpy.ExecuteError
