@@ -147,7 +147,7 @@ class TerrainImageToCollada(object):
         except subprocess.CalledProcessError as error:
             arcpy.AddMessage("Blender reported the following errors. This may mean nothing but is displayed for informational purposes.")
             arcpy.AddMessage("-------------------------BEGIN BLENDER ERROR OUTPUT-------------------------")
-            arcpy.AddMessage(error.output)
+            arcpy.AddMessage(error.output.decode())
             arcpy.AddMessage("-------------------------END OF BLENDER ERROR OUTPUT------------------------")
             return None
 
