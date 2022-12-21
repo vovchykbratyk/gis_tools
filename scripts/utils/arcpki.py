@@ -14,10 +14,14 @@ from tkinter.filedialog import askopenfilename
 # Local imports
 sys.path.append(os.path.dirname(__file__))
 from exceptions import PkiPasswordError
+from userprefs import UserPrefs
 
 # Non-arcpy dependencies
 from requests_pkcs12 import Pkcs12Adapter
 import requests_pkcs12
+
+# Globals
+USER_PREF_PATH = UserPrefs().base
 
 
 class ArcPKI:
@@ -146,7 +150,7 @@ class Config:
 
     def __init__(self):
         
-        self.user_data_path = os.path.join(os.path.expanduser('~'), ".arcpki")
+        self.user_data_path = os.path.join(USER_PREF_PATH, ".arcpki")
         if not os.path.exists(self.user_data_path):
             os.makedirs(self.user_data_path)
         self.pki_config_file = os.path.join(self.user_data_path, "pki_config.json")
