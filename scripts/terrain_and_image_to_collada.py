@@ -1,9 +1,15 @@
 import arcpy
 from arcpy.sa import *
 from datetime import datetime
+import json
 import os
 from pathlib import Path, PureWindowsPath
+import subprocess
 import sys
+
+# Local imports
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
+from userprefs import UserPrefs
 
 arcpy.CheckOutExtension("Spatial")
 arcpy.CheckOutExtension("3D")
@@ -12,9 +18,8 @@ arcpy.CheckOutExtension("3D")
 sys.dont_write_bytecode = True
 
 # Globals
-BLENDER_EXE = "C:/Program Files/Blender Foundation/Blender 3.2/blender.exe"
-BLENDER_UTILS = os.path.join(os.path.dirname(__file__), "blender")
-DAE_DOWNGRADE_SCRIPT = os.path.join(BLENDER_UTILS, "dae2dae.py")
+DAE_DOWNGRADE_SCRIPT = os.path.join(os.path.dirname(__file__), 'blender', 'dae2dae.py')
+USER_PREFS_PATH = UserPrefs().base
 
 
 class ProjectionException(Exception):
@@ -71,8 +76,26 @@ class TerrainImageToCollada(object):
         
         param3.filter.type = "ValueList"
         param3.filter.list = ["Low", "Medium", "High", "Insane"]
+
+        param4 = arcpy.Parameter(
+            category="Advanced",
+            displayName="Add/Update Path to Blender?",
+            name="update_blender",
+            datatype="GPBoolean",
+            parameterType="Optional",
+            direction="Input"
+        )
+
+        param5 = arcpy.Parameter(
+            category="Advanced",
+            displayName="Path to Blender Executable",
+            name="blenderpath",
+            datatype="DEFile",
+            parameterType="Optional",
+            direction="Input"
+        )
         
-        return [param0, param1, param2, param3]
+        return [param0, param1, param2, param3, param4, param5]
      
     def isLicensed(self):
         return True
@@ -96,18 +119,30 @@ class TerrainImageToCollada(object):
             terr_in_sr = arcpy.Describe(parameters[1].valueAsText).spatialReference
             if terr_in_sr.type == "Geographic":
                 parameters[1].setErrorMessage("Input terrain must be projected.")
+
+        if parameters[4].value is True and parameters[5].value is None:
+            parameters[5].setErrorMessage("A path to the Blender executable must be provided.")
+
+    def blender_path(self):
+        blender_cfg = os.path.join(USER_PREFS_PATH, "blender.json")
+        if not os.path.exists(blender_cfg):
+            return False
+        else:
+            with open(blender_cfg, "r") as cf:
+                b = json.load(cf)
+                return PureWindowsPath(b["blender_exe"])
                 
-    def collada_downgrade(self, dae_path):
+    def collada_downgrade(self, path_to_blender, dae_path):
         try:
             outputs = []
             for f in Path(dae_path).rglob("*.dae"):
-                blender_cmd = [BLENDER_EXE, "-b", "-P", DAE_DOWNGRADE_SCRIPT, f]
+                blender_cmd = [path_to_blender, "-b", "-P", DAE_DOWNGRADE_SCRIPT, f]
                 raw_output = subprocess.check_output(
                     blender_cmd,
                     shell=True
                 )
                 outputs.append(raw_output)
-                arcpy.AddMessage(f"Done processing {f}."})
+                arcpy.AddMessage(f"Done processing {f}.")
             return outputs
         except subprocess.CalledProcessError as error:
             arcpy.AddMessage("Blender reported the following errors. This may mean nothing but is displayed for informational purposes.")
@@ -115,6 +150,12 @@ class TerrainImageToCollada(object):
             arcpy.AddMessage(error.output)
             arcpy.AddMessage("-------------------------END OF BLENDER ERROR OUTPUT------------------------")
             return None
+
+    def create_blender_cfg(self, path_to_exe):
+        cfg_file = os.path.join(USER_PREFS_PATH, "blender.json")
+        with open(cfg_file, "w") as blender_cfg_out:
+            blender_cfg_out.write(json.dumps({"blender_exe": str(PureWindowsPath(path_to_exe))}))
+        return None
         
     def get_view_extent_polygon(self, sr):
         p = arcpy.mp.ArcGISProject("CURRENT")
@@ -132,6 +173,20 @@ class TerrainImageToCollada(object):
         # Environments
         arcpy.env.overwriteOutput = True
         scratch = arcpy.env.scratchGDB
+
+        # Get the Blender configuration stuff out of the way first
+        if parameters[4].value:
+            # We are going to add or update a Blender config file
+            blender_path = self.create_blender_cfg(str(Path(parameters[5].valueAsText)))
+
+        else:
+            """
+            We'll check for a Blender config file and use it if it's there,
+            otherwise blender_path will be false and we'll deal with it at
+            the end.
+            """
+            blender_path = self.blender_path()
+
         
         # Do the work
         try:
@@ -171,7 +226,7 @@ class TerrainImageToCollada(object):
             if not os.path.exists(folder_out):
                 os.makedirs(folder_out)
             
-            mask = arcpy.CopyFeatures_management(extent_poly, os.path.join(r"in_memory", "mask"))
+            mask = arcpy.CopyFeatures_management(extent_poly, os.path.join(scratch, "mask"))
             
             # Prep rasters
             arcpy.SetProgressor("default", "Processing rasters...")
@@ -191,16 +246,12 @@ class TerrainImageToCollada(object):
             arcpy.SetProgressor("default", "Creating Collada flat...")
             tin_params = str(os.path.join(scratch, "mask")) + " Shape_Area Soft_Clip"
             tin_name = os.path.join(folder_out, "flatTIN")
-            try:
-                tin = arcpy.CreateTin_3d(
-                    tin_name,
-                    spatial_reference=processing_sr,
-                    in_features=tin_params,
-                    constrained_delaunay="DELAUNAY")
-            except arcpy.ExecuteError:
-                arcpy.AddWarning(arcpy.GetMessages())
-                pass
-            
+            tin = arcpy.CreateTin_3d(
+                tin_name,
+                spatial_reference=processing_sr,
+                in_features=tin_params,
+                constrained_delaunay="DELAUNAY")
+
             # Convert flat TIN to flat multipatch
             fm_name = os.path.join(scratch, "flat_mp")
             arcpy.InterpolatePolyToPatch_3d(tin, mask, fm_name, "", "1", "Area", "SArea", "0")
@@ -255,10 +306,10 @@ class TerrainImageToCollada(object):
             arcpy.CheckInExtension("3D")
             
             # Do Blender Collada conversion if Blender's available
-            if os.path.exists(BLENDER_EXE):
+            if blender_path:
                 for fp in [full_terr_dae_name, flat_dae_name]:
                     arcpy.AddMessage(f"Attempting to convert content in {fp} to Collada 1.4...")
-                    self.collada_downgrade(PureWindowsPath(fp))
+                    self.collada_downgrade(blender_path, fp)
             
             arcpy.AddMessage("Completed processing.")
         except arcpy.ExecuteError:
