@@ -5,17 +5,11 @@ import os
 from pathlib import Path
 import sys
 
-# Local imports
-sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
-
 arcpy.CheckOutExtension("Spatial")
 arcpy.CheckOutExtension("3D")
 
 # Disable cache files
 sys.dont_write_bytecode = True
-
-# Globals
-DAE_DOWNGRADE_SCRIPT = os.path.join(os.path.dirname(__file__), 'blender', 'dae2dae.py')
 
 
 class ProjectionException(Exception):
