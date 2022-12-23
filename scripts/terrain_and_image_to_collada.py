@@ -5,9 +5,6 @@ import os
 from pathlib import Path
 import sys
 
-# Local imports
-sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
-
 arcpy.CheckOutExtension("Spatial")
 arcpy.CheckOutExtension("3D")
 
