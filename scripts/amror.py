@@ -45,7 +45,7 @@ class AreaMaxRiseOverRun(object):
             parameterType="Optional",
             direction="Input"
         )
-        param.filter.list = ["Polygon"]
+        param1.filter.list = ["Polygon"]
         
         param2 = arcpy.Parameter(
             displayName="Surface Raster",
