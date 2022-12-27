@@ -185,8 +185,9 @@ class TerrainImageToCollada(object):
 
         # Create single flat .dae for digitizing
         arcpy.SetProgressor("default", "Creating Collada (Flat)...")
-        tin_params = str(os.path.join(scratch, "mask")) + " Shape_Area Soft_Clip"
+        tin_params = f"{mask} Shape_Area Soft_Clip"
         tin_name = os.path.join(folder_out, "TIN", "Flat")
+        if not os.path.exists(tin_name): os.makedirs(tin_name)
         flat_tin = arcpy.CreateTin_3d(
             tin_name,
             spatial_reference=spatial_ref,
@@ -247,6 +248,7 @@ class TerrainImageToCollada(object):
         
         # Environments
         arcpy.env.overwriteOutput = True
+        scratch = arcpy.env.scratchGDB
         
         # Do the work
         try:
@@ -269,7 +271,7 @@ class TerrainImageToCollada(object):
                         if oid < 10: oid = f"0{oid}"
                         job_out_path = os.path.join(out_folder, f"AOI_{oid}")
                         if not os.path.exists(job_out_path): os.makedirs(job_out_path)
-                        mask = arcpy.CopyFeatures_management(geom, os.path.join(r"memory", mask))
+                        mask = arcpy.CopyFeatures_management(geom, os.path.join(scratch, mask))
                         converted = self.to_collada(
                             mask,
                             img_in,
@@ -285,9 +287,10 @@ class TerrainImageToCollada(object):
                         arcpy.AddMessage("--------------------------------------------------------------------")
             else:
                 # We're running by view extent, so only one job will be executed.
+                arcpy.AddMessage("Processing view extent...")
                 extent_poly = self.get_view_extent_polygon(processing_sr)
                 rows, cols = self.set_rows_and_cols(extent_poly.area)
-                mask = arcpy.CopyFeatures_management(extent_poly, os.path.join(r"memory", "mask"))
+                mask = arcpy.CopyFeatures_management(extent_poly, os.path.join(scratch, "mask"))
                 converted = self.to_collada(
                     mask,
                     img_in,
