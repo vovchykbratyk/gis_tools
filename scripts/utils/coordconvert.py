@@ -45,7 +45,6 @@ class CoordConvert:
         dms_pattern = re.compile(r"^\d{6}(\.\d{1,3})?[NS]{1}\s?\d{6,7}(\.\d{1,3})?[EW]{1}")
         arc_dd_pattern = re.compile(r"(\d{2,3}\.\d+.[EW]?\s?\d{2}\.\d+.[NS]?)$")
         dd_pattern = re.compile(r"^(\d+\.\d+?[NSEW]?[,\s]{0,2}\d+\.\d+?[NSEW]?)$")
-        be_pattern = re.compile(r"((^\d{4})(-\d{5})?([A-Z]{2}?\d{4})?)$")
         
         patterns = {
             "MGRS": mgrs_pattern,
@@ -53,7 +52,6 @@ class CoordConvert:
             "DMS": dms_pattern,
             "ArcGIS_Pro_DD": arc_dd_pattern,
             "DD": dd_pattern,
-            "BENUM": be_pattern
         }
         
         for k, v in patterns.items():
@@ -129,20 +127,7 @@ class CoordConvert:
                         osrm_dd["point"] = arcpy.Point(float(parsed.group(1)), float(parsed.group(2)))
                     else:
                         sys.exit(f"Couldn't parse {self.coord}")
-        else:  # Look up BE
-            query_url = f"{self.be_url}/{self.coord}"
-            try:
-                resp = ArcPKI().get(query_url).json()
-                r = resp[0]
-                try:
-                    lon, lat = str(r.get("dec_long")), str(r.get("dec_lat"))
-                    osrm_dd["layername"] = r.get("name")
-                    osrm_dd["coordstring"] = f"{lon},{lat}"
-                    osrm_dd["point"] = arcpy.Point(float(lon), float(lat))
-                except ValueError:
-                    raise ValueError
-            except TypeError:
-                arcpy.AddWarning(ArcPKI().get(query_url).headers)
-                raise TypeError
+        else:
+            raise TypeError
                 
         return osrm_dd
