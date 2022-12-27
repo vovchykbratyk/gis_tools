@@ -5,18 +5,6 @@ from pathlib import Path
 import re
 import sys
 
-# Local imports
-sys.path.append(os.path.dirname(__file__))
-import arcpki
-ArcPKI = arcpki.ArcPKI
-
-# Non-Arcpy dependencies
-try:
-    import mgrs
-except ImportError:
-    arcpy.AddError("Could not find mgrs installed on this system, exiting.")
-    sys.exit()
-    
     
 class CoordConvert:
     
@@ -68,66 +56,73 @@ class CoordConvert:
         """
         osrm_dd = {}
         in_type = self.coord_type[1]
-        if in_type != "BENUM":
-            osrm_dd["layername"] = None
-            
-            if in_type == "MGRS":
-                m = mgrs.MGRS()
-                d = m.toLatLon(self.coord)
-                osrm_dd["coordstring"] = f"{str(d[1])},{str(d[0])}"
-                osrm_dd["point"] = arcpy.Point(float(d[1]), float(d[0]))
         
-            elif in_type == "ArcGIS_Pro_DMS":  # Comes in longitude-latitude format
-                ss = r"^(\d{1,3}).{1}(\d{1,2})\'(\d{1,2}\"([EW]{1})\s{1}(\d{1,3}).(\d{1,2})\'(\d{1,2})\"([NS]{1})\s?"
-                x = re.search(ss, self.coord).groups()
-                llstr = []
-                for i in x[:3] + x[4:7]:
-                    if len(i) < 2:
-                        i = '0' + str(i)
-                    llstr.append(i)
-                llstr.insert(3, x[3])
-                llstr.insert(7, x[7])
-                m = mgrs.MGRS()
-                lon = m.dmstodd(''.join(llstr[:4]))
-                lat = m.dmstodd(''.join(llstr[4:8]))
-                osrm_dd["coordstring"] = f"{str(lon)},{str(lat)}"
-                osrm_dd["point"] = arcpy.Point(float(lon), float(lat))
-                
-            elif in_type == "DMS":
-                pattern = re.compile(r'[\W_]+')
-                fixed = pattern.sub('', self.coord)
-                m = mgrs.MGRS()
-                lat = m.dmstodd(fixed[:7])
-                lon = m.dmstodd(fixed[7:])
-                osrm_dd["coordstring"] = f"{str(lon)},{str(lat)}"
-                osrm_dd["point"] = arcpy.Point(float(lon), float(lat))
-                
-            elif in_type == "ArcGIS_Pro_DD":
-                coords = self.coord.split(" ")
-                lonlat = []
-                for i in coords:
-                    lonlat.append(i[:-2])
-                osrm_dd["coordstring"] = ",".join(lonlat)
-                osrm_dd["point"] = arcpy.Point(float(lonlat[0]), float(lonlat[1]))
-                
-            elif in_type == "DD":
-                if dd_in_standard_order:
-                    # Assume standard decimal degree notation is delivered in LATITUDE,LONGITUDE order
-                    parsed = re.match(r"(^\d{2}\.\d+)[NS]?,?\s?(\d{2}\.\d+)[EW]?", self.coord)
-                    if parsed:
-                        osrm_dd["coordstring"] = f"{parsed.group(2)},{parsed.group(1)}"
-                        osrm_dd["point"] = arcpy.Point(float(parsed.group(2)), float(parsed.group(1)))
-                    else:
-                        sys.exit(f"Couldn't parse {self.coord}")
+        osrm_dd["layername"] = None
+            
+        if in_type == "MGRS":
+            arcpy.AddMessage("Detected MGRS Coordinate...")
+            p = arcpy.FromCoordString(self.coord, "MGRS")
+            dd = self.to_lat_lon(p.toCoordString("DD"))
+            osrm_dd["coordstring"] = f"{str(dd[1])},{str(dd[0])}"
+            osrm_dd["point"] = p
+            
+        elif in_type == "ArcGIS_Pro_DMS":  # Comes in longitude-latitude format
+            ss = r"^(\d{1,3}).{1}(\d{1,2})\'(\d{1,2}\"([EW]{1})\s{1}(\d{1,3}).(\d{1,2})\'(\d{1,2})\"([NS]{1})\s?"
+            x = re.search(ss, self.coord).groups()
+            llstr = []
+            for i in x[:3] + x[4:7]:
+                if len(i) < 2:
+                    i = '0' + str(i)
+                llstr.append(i)
+            llstr.insert(3, x[3])
+            llstr.insert(7, x[7])
+            
+            p = arcpy.FromCoordString(f"{' '.join(llstr[4:8])} {' '.join(llstr[:4])}", "DMS")
+            dd = self.to_lat_lon(p.toCoordString("DD"))
+            
+            osrm_dd["coordstring"] = f"{str(dd[1])},{str(dd[0])}"
+            osrm_dd["point"] = p
+        
+        elif in_type == "DMS":
+            dms_in = self.coord.strip().replace(" ", "")
+            dms_patt = r"^(\d{2})(\d{2})(\d{2}[NS])(\d{2,3})(\d{2})(\d{2}[EW])"
+            parsed_dms = re.search(dms_patt, dms_in).groups()
+            dms = " ".join(parsed_dms)
+            p = arcpy.FromCoordString(dms, "DMS")
+            dd = self.to_lat_lon(p.toCoordString("DD"))
+            osrm_dd["coordstring"] = f"{str(dd[1])},{str(dd[0])}"
+            osrm_dd["point"] = p
+            
+        elif in_type == "ArcGIS_Pro_DD":
+            coords = self.coord.split(" ")
+            lonlat = []
+            for i in coords:
+                lonlat.append(i[:-2])
+            osrm["coordstring"] = ",".join(lonlat)
+            osrm_dd["point"] = arcpy.Point(float(lonlat[0]), float(lonlat[1]))
+        
+        elif in_type == "DD":
+            if dd_in_standard_order:
+                # Assume standard decimal degree notation is delivered in LATITUDE,LONGITUDE order.
+                parsed = re.match(r"(^\d{2}\.\d+)[NS]?,?\s?(\d{2}\.\d+)[EW]?", self.coord)
+                if parsed:
+                    osrm_dd["coordstring"] = f"{parsed.group(2)},{parsed.group(1)}"
+                    osrm_dd["point"] = arcpy.Point(float(parsed.group(2)), float(parsed.group(1)))
                 else:
-                    # User override for decimal degree notation delivered in LONGITUDE,LATITUDE order.
-                    parsed = re.match(r"(^\d{2}\.\d+)[EW]?,?\s?(\d{2}\.\d+)[NS]?", self.coord)
-                    if parsed:
-                        osrm_dd["coordstring"] = f"{parsed.group(1)},{parsed.group(2)}"
-                        osrm_dd["point"] = arcpy.Point(float(parsed.group(1)), float(parsed.group(2)))
-                    else:
-                        sys.exit(f"Couldn't parse {self.coord}")
-        else:
-            raise TypeError
+                    sys.exit(f"Couldn't parse {self.coord}")
+            else:
+                # User override for decimal degree notation delivered in LONGITUDE,LATITUDE order.
+                parsed = re.match(r"(^\d{2}\.\d+)[EW]?,?\s?(\d{2}\.\d+)[NS]?", self.coord)
+                if parsed:
+                    osrm_dd["coordstring"] = f{parsed.group(1)},{parsed.group(2)}"
+                    osrm_dd["point"] = arcpy.Point(float(parsed.group(1)), float(parsed.group(2)))
+                else:
+                    sys.exit(f"Couldn't parse {self.coord}")
                 
         return osrm_dd
+    
+    def to_lat_lon(self, c: str):
+        lat, lon = c.split(" ")
+        lat = float(lat.replace("N", "").replace("S", ""))
+        lon = float(lon.replace("E", "").replace("W", ""))
+        return lat, lon
