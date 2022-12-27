@@ -163,7 +163,7 @@ class TerrainImageToCollada(object):
         elif sensitivity == "Insane (Z Sensitivity: .1)":
             return .1
 
-    def to_collada(self, mask, image_layer, terrain_layer, spatial_ref, rows, cols, z_sensitivity, folder_out):
+    def to_collada(self, mask, image_layer, terrain_layer, rows, cols, z_sensitivity, spatial_ref, folder_out):
         # Write to scratchGDB. In future we need to move to memory
         scratch = arcpy.env.scratchGDB
 
