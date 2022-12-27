@@ -78,7 +78,7 @@ class TerrainImageToCollada(object):
         
         param5 = arcpy.Parameter(
             category="Advanced Options",
-            displayName="Surface Quality",
+            displayName="Quality",
             name="quality",
             datatype="GPString",
             parameterType="Optional",
@@ -108,9 +108,14 @@ class TerrainImageToCollada(object):
         return True
     
     def updateMessages(self, parameters):
-        # Check if both layers are projected
+        # Check if both layers are projected and if they match
+        if parameters[0].altered:
+            if parameters[0].valueAsText == "By Polygon Layer":
+                if parameters[1].value is None:
+                    parameters[1].setErrorMessage("Provide a polygon layer for processing.")
         if parameters[2].altered:
             img_in_sr = arcpy.Describe(parameters[2].valueAsText).spatialReference
+            
             if img_in_sr.type == "Geographic":
                 parameters[2].setErrorMessage("Input image must be projected.")
                 
@@ -119,10 +124,13 @@ class TerrainImageToCollada(object):
                 if terr_in_sr.factoryCode != img_in_sr.factoryCode:
                     if terr_in_sr.type != "Geographic":  # Only checking for different projections here
                         parameters[3].setErrorMessage(f"Input terrain projection (EPSG:{terr_in_sr.factoryCode}) does not match input image (EPSG:{img_in_sr.factoryCode})")
+        
         if parameters[3].altered:
             terr_in_sr = arcpy.Describe(parameters[3].valueAsText).spatialReference
             if terr_in_sr.type == "Geographic":
                 parameters[3].setErrorMessage("Input terrain must be projected.")
+                
+        return
         
     def get_view_extent_polygon(self, sr):
         p = arcpy.mp.ArcGISProject("CURRENT")
@@ -155,40 +163,35 @@ class TerrainImageToCollada(object):
         elif sensitivity == "Insane (Z Sensitivity: .1)":
             return .1
 
-    def to_collada(self, extent_poly, image, terrain, rows, cols, z, spatial_ref, folder_out):
+    def to_collada(self, mask, image_layer, terrain_layer, spatial_ref, rows, cols, z_sensitivity, folder_out):
         # Write to scratchGDB. In future we need to move to memory
         scratch = arcpy.env.scratchGDB
 
         arcpy.SetProgressor("default", "Setting job extent...")
-        mask = arcpy.CopyFeatures_management(extent_poly, os.path.join(scratch, "mask"))
-
-        arcpy.SetProgressor("default", "Extracting raster data...")
         img_lyr = arcpy.MakeRasterLayer_management(image)
         terrain_lyr = arcpy.MakeRasterLayer_management(terrain)
-
+        
         img_xtract_raw = ExtractByMask(img_lyr, mask)
         img_xtract = arcpy.ia.ExtractBand(img_xtract_raw, [1, 2, 3])
         terrain_xtract = ExtractByMask(terrain_lyr, mask)
-
-        arcpy.SetProgressor("default", "Exporting image to JPG...")
+        
+        # Convert image to JPEG for painting Collada model
         jpg_out = os.path.join(folder_out, "paint.jpg")
         arcpy.CopyRaster_management(
             img_xtract, jpg_out,
             nodata_value="255",
             pixel_type="8_BIT_UNSIGNED",
-            RGB_to_Colormap="NONE"
-        )
+            RGB_to_Colormap="NONE")
 
+        # Create single flat .dae for digitizing
         arcpy.SetProgressor("default", "Creating Collada (Flat)...")
-        # Convert mask to a flat TIN
         tin_params = str(os.path.join(scratch, "mask")) + " Shape_Area Soft_Clip"
         tin_name = os.path.join(folder_out, "TIN", "Flat")
         flat_tin = arcpy.CreateTin_3d(
             tin_name,
             spatial_reference=spatial_ref,
             in_features=tin_params,
-            constrained_delaunay="DELAUNAY"
-        )
+            constrained_delaunay="DELAUNAY")
 
         # Convert flat TIN to flat multipatch
         flat_mp_name = os.path.join(scratch, "flat_mp")
@@ -198,8 +201,8 @@ class TerrainImageToCollada(object):
         flat_dae_name = os.path.join(folder_out, "Flat")
         arcpy.MultipatchToCollada_conversion(flat_mp_name, flat_dae_name, "PREPEND_SOURCE_NAME", "", collada_version="1.4")
 
+        # Create fishnet terrain tiles
         arcpy.SetProgressor("default", "Creating Collada (Terrain)...")
-        # Do the fishnet to split up the area if necessary
         fishnet = os.path.join(scratch, "fishnet")
         view_desc = arcpy.Describe(mask)
         origin_coord = str(view_desc.extent.lowerLeft)
@@ -218,8 +221,7 @@ class TerrainImageToCollada(object):
             "",
             "NO_LABELS",
             mask,
-            "POLYGON"
-        )
+            "POLYGON")
 
         # Convert extracted terrain to TIN
         rtin_name = os.path.join(folder_out, "TIN", "Terrain")
@@ -245,7 +247,6 @@ class TerrainImageToCollada(object):
         
         # Environments
         arcpy.env.overwriteOutput = True
-        scratch = arcpy.env.scratchGDB
         
         # Do the work
         try:
@@ -268,7 +269,7 @@ class TerrainImageToCollada(object):
                         if oid < 10: oid = f"0{oid}"
                         job_out_path = os.path.join(out_folder, f"AOI_{oid}")
                         if not os.path.exists(job_out_path): os.makedirs(job_out_path)
-                        mask = arcpy.CopyFeatures_management(geom, os.path.join(scratch, mask))
+                        mask = arcpy.CopyFeatures_management(geom, os.path.join(r"memory", mask))
                         converted = self.to_collada(
                             mask,
                             img_in,
@@ -286,7 +287,7 @@ class TerrainImageToCollada(object):
                 # We're running by view extent, so only one job will be executed.
                 extent_poly = self.get_view_extent_polygon(processing_sr)
                 rows, cols = self.set_rows_and_cols(extent_poly.area)
-                mask = arcpy.CopyFeatures_management(extent_poly, os.path.join(scratch, "mask"))
+                mask = arcpy.CopyFeatures_management(extent_poly, os.path.join(r"memory", "mask"))
                 converted = self.to_collada(
                     mask,
                     img_in,
@@ -295,7 +296,11 @@ class TerrainImageToCollada(object):
                     cols,
                     z_sensitivity,
                     processing_sr,
-                    out_folder)            
+                    out_folder)
+                arcpy.AddMesssage("Finished processing view extent.")
+                arcpy.AddMessage(f"\tFlat Collada may be found at {converted[0]}")
+                arcpy.AddMessage(f"\tTerrain Collada may be found at {converted[1]}")
+                arcpy.AddMessage("--------------------------------------------------------------------")
             
             # Return licenses
             arcpy.CheckInExtension("Spatial")
