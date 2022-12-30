@@ -18,20 +18,13 @@ class CoordConvert:
             self.coord = str(self.coord).replace(" ", "")
             
         self.coord_type = self._get_coord_type()
-        self.be_url = self._get_be_url()
-        
-    def _get_be_url(self):
-        config_file = os.path.join(Path(os.path.dirname(__file__)).parent, "cfg", "be_lookup.json")
-        with open(config_file, "r") as cf:
-            configs = json.load(cf)
-            return configs["BE_SERVICE"]
         
     def _get_coord_type(self):
         # Figure out what kind of notation we're dealing with
         mgrs_pattern = re.compile(r"^\d{1,2}[A-Z]{3}[0-9]+")
         arc_dms_pattern = re.compile(r"^\d{1,3}.{1}\d{1,2}\'\d{1,2}\"[EW]{1}\s{1}\d{1,3}.\d{1,2}\'\d{1,2}\"[NS]{1}\s?")
         dms_pattern = re.compile(r"^\d{6}(\.\d{1,3})?[NS]{1}\s?\d{6,7}(\.\d{1,3})?[EW]{1}")
-        arc_dd_pattern = re.compile(r"(\d{2,3}\.\d+.[EW]?\s?\d{2}\.\d+.[NS]?)$")
+        arc_dd_pattern = re.compile(r"(\d{1,3}\.\d+.[EW]?\s?\d{1,2}\.\d+.[NS]?)$")
         dd_pattern = re.compile(r"^(\d+\.\d+?[NSEW]?[,\s]{0,2}\d+\.\d+?[NSEW]?)$")
         
         patterns = {
@@ -98,7 +91,7 @@ class CoordConvert:
             lonlat = []
             for i in coords:
                 lonlat.append(i[:-2])
-            osrm["coordstring"] = ",".join(lonlat)
+            osrm_dd["coordstring"] = ",".join(lonlat)
             osrm_dd["point"] = arcpy.Point(float(lonlat[0]), float(lonlat[1]))
         
         elif in_type == "DD":
@@ -114,7 +107,7 @@ class CoordConvert:
                 # User override for decimal degree notation delivered in LONGITUDE,LATITUDE order.
                 parsed = re.match(r"(^\d{2}\.\d+)[EW]?,?\s?(\d{2}\.\d+)[NS]?", self.coord)
                 if parsed:
-                    osrm_dd["coordstring"] = f{parsed.group(1)},{parsed.group(2)}"
+                    osrm_dd["coordstring"] = f"{parsed.group(1)},{parsed.group(2)}"
                     osrm_dd["point"] = arcpy.Point(float(parsed.group(1)), float(parsed.group(2)))
                 else:
                     sys.exit(f"Couldn't parse {self.coord}")
