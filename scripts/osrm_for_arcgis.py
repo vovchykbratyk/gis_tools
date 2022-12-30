@@ -85,58 +85,28 @@ class OSRM(object):
     
     def now(self):
         return datetime.now().strftime("%Y%m%dT%H%M%S")
-    
+
+    def set_waypoints(self, waypointstr: str, latlon_reversed: bool):
+        waypoints = [w.replace("'", "").strip() for w in waypointstr.split(";")]
+        return {f"waypoint_{str(idx).zfill(2)}": CoordConvert(val).to_osrm_dd(latlon_reversed) for idx, val in enumerate(waypoints)}
+
     def execute(self, parameters, messages):
         
         # Environments
         p = arcpy.mp.ArcGISProject("CURRENT")
-        active_map = p.activeMap
         default_db = p.defaultGeodatabase
         arcpy.env.workspace = p.defaultGeodatabase
-        active_sr = active_map.spatialReference
-        
-        startpoint = parameters[0].valueAsText
-        waypoints = parameters[1].valueAsText
-        endpoint = parameters[2].valueAsText
-        ll_order = parameters[3].value
-        alts = paramters[4].value
-        
-        # Hold waypoints separately, if any
-        waypoint_dict = {}
-        waypoint_count = 1  # Always count waypoints starting at 1
-        
         now = self.now()
-        
-        if ll_order:  # Decimal degrees, delivered in X/Y (Lon, Lat)
-            start = CoordConvert(startpoint).to_osrm_dd(ll_order)
-            end = CoordConvert(endpoint).to_osrm_dd(ll_order)
-            if waypoints:
-                if len(waypoints) > 9:
-                    for wp in waypoints.split(";")
-                    wp = wp.replace("'", "").strip()
-                    wpoint = CoordConvert(wp).to_osrm_dd(ll_order)
-                    if waypoint_count < 10:
-                        waypoint_dict[f"waypoint_0{waypoint_count}"] = [wpoint["layername"], wpoint["coordstring"],
-                                                                        wpoint["point"]]
-                    else:
-                        waypoint_dict[f"waypoint_{waypoint_count}"] = [wpoint["layername"], wpoint["coordstring"],
-                                                                       wpoint["point"]]
-                    waypoint_count += 1
-        else:  # Decimal degrees, delivered in Y/X (Lat, Lon)
-            start = CoordConvert(startpoint).to_osrm_dd()
-            end = CoordConvert(endpoint).to_osrm_dd()
-            if waypoints:
-                if len(waypoints) > 0:
-                    for wp in waypoints.split(";"):
-                        wp = wp.replace("'", "").strip()
-                        wpoint = CoordConvert(wp).to_osrm_dd()
-                        if waypoint_count < 10:
-                            waypoint_dict[f"waypoint_0{waypoint_count}"] = [wpoint["layername"], wpoint["coordstring"],
-                                                                            wpoint["point"]]
-                        else:
-                            waypoint_dict[f"waypoint_{waypoint_count}"] = [wpoint["layername"], wpoint["coordstring"],
-                                                                           wpoint["point"]]
-                        waypoint_count += 1
+
+        # Parameters
+        latlon_reversed = parameters[3].value  # Will be True or False (Default)
+        start = CoordConvert(parameters[0].valueAsText).to_osrm_dd(latlon_reversed)
+        end = CoordConvert(parameters[2].valueAsText).to_osrm_dd(latlon_reversed)
+        waypoints = parameters[1].valueAsText
+        alts = parameters[4].value
+
+        if waypoints:
+            waypoint_dict = self.set_waypoints(waypoints, latlon_reversed)
                         
         origin = start["coordstring"]
         if start["layername"]:
@@ -271,7 +241,7 @@ class OSRM(object):
                 osrm_group.name = f"OSRM {now}"
                 """
                 for idx, rfc in enumerate(route_fc_list):
-                    osrm_lyr = active_map.addDataFromPath(rfc)
+                    osrm_lyr = p.activeMap.addDataFromPath(rfc)
                     if idx == 0:  # First route is primary/optimized route
                         osrm_lyr.name = "OSRM Route (Primary)"
                         rsym = osrm_lyr.symbology
@@ -286,7 +256,7 @@ class OSRM(object):
                         osrm_lyr.symbology = rsym
                         
                 # Add Destination
-                destination_lyr = active_map.addDataFromPath(destination_fc)
+                destination_lyr = p.activeMap.addDataFromPath(destination_fc)
                 destination_lyr.name = f"{destination_label} (Destination)"
                 dsym = destination_lyr.symbology
                 dsym.renderer.symbol.size = 9
@@ -297,7 +267,7 @@ class OSRM(object):
                 if len(waypoint_layers) > 0:
                     waypoint_layers = reversed(waypoint_layers)
                     for wl in waypoint_layers:
-                        waypoint_lyr = active_map.addDataFromPath(wl[1])
+                        waypoint_lyr = p.activeMap.addDataFromPath(wl[1])
                         if wl[0] < 10:
                             waypoint_lyr.name = f"Waypoint 0{wl[0]}"
                         else:
@@ -308,7 +278,7 @@ class OSRM(object):
                         waypoint_lyr.symbology = wsym
                         
                 # Add Origin
-                origin_lyr = active_map.addDataFromPath(origin_fc)
+                origin_lyr = p.activeMap.addDataFromPath(origin_fc)
                 origin_lyr.name = f"{origin_label} (Origin)"
                 osym = origin_lyr.symbology
                 osym.renderer.symbol.size = 9
