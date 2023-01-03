@@ -1,5 +1,5 @@
 import arcpy
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
 from pathlib import Path
@@ -83,22 +83,74 @@ class OSRM(object):
     def updateMessages(self, parameters):
         return True
     
+    def build_url(self, origin, destination, waypoints: list, alts: bool):
+        with open(OSRM_CONFIG_FILE, "r") as osrm_cfg:
+            o = json.load(osrm_cfg)
+            urldata = o["URL"]
+            baseurl = urldata["BASE"]
+            p2p_url = urldata["P2P"]
+            p2p_wp_url = urldata["WITH_WAYPOINTS"]
+            p2p_alts_url = urldata["P2P_ALTS"]
+            wpw_alts_wp_url = urldata["WITH_WAYPOINTS_ALTS"]
+            
+            if alts:  # Get primary route and alternate routes
+                if len(waypoints) > 0:
+                    waypoint_str = ";".join(waypoints)
+                    return baseurl + (str(p2p_alts_wp_url)
+                                      .replace("_ORIGIN_", origin)
+                                      .replace("_DESTINATION_", destination)
+                                      .replace("_WAYPOINTSTR_", waypoint_str))
+                else:
+                    return baseurl + (str(p2p_alts_url)
+                                      .replace("_ORIGIN_", origin)
+                                      .replace("_DESTINATION_", destination))
+            else:  # Get only primary route
+                if len(waypoints) > 0:
+                    waypoint_str = ";".join(waypoints)
+                    return baseurl + (str(p2p_wp_url)
+                                      .replace("_ORIGIN_", origin)
+                                      .replace("_DESTINATION_", destination)
+                                      .replace("_WAYPOINTSTR_", waypoint_str))
+                else:
+                    return baseurl + (str(p2p_url)
+                                      .replace("_ORIGIN_", origin)
+                                      .replace("_DESTINATION_", destination))
+                
+    def memory_to_active_map(self, memory_fc):
+        active_map = arcpy.mp.ArcGISProject("CURRENT").activeMap
+        mem_fc_name = arcpy.Describe(memory_fc).name
+        lyr_results = arcpy.MakeFeatureLayer_management(memory_fc, mem_fc_name)
+        mem_lyr = lyr_results.getOutput(0)
+        return active_map.addLayer(mem_lyr)[0]
+    
     def now(self):
         return datetime.now().strftime("%Y%m%dT%H%M%S")
+    
+    def print_waypoints(self, waypoints: dict):
+        arcpy.AddMessage("\t----------------------------BEGIN WAYPOINTS----------------------------")
+        for i in waypoints.values():
+            arcpy.AddMessage("\t\t{}".format(i["coordstring"]))
+        arcpy.AddMessage("\t----------------------------END WAYPOINTS----------------------------")
 
     def set_waypoints(self, waypointstr: str, latlon_reversed: bool):
         waypoints = [w.replace("'", "").strip() for w in waypointstr.split(";")]
         return {f"waypoint_{str(idx).zfill(2)}": CoordConvert(val).to_osrm_dd(latlon_reversed) for idx, val in enumerate(waypoints)}
+    
+    def write_featureclass(self, fc, out_db):
+        fc_name = arcpy.Describe(fc).name
+        return arcpy.CopyFeatures_management(fc, os.path.join(out_db, fc_name))
 
     def execute(self, parameters, messages):
         
         # Environments
-        p = arcpy.mp.ArcGISProject("CURRENT")
-        default_db = p.defaultGeodatabase
-        arcpy.env.workspace = p.defaultGeodatabase
         now = self.now()
+        
+        # Constants
+        waypoint_dict = None
+        waypoint_str_coords = []
+        waypoint_fc_list = []
 
-        # Parameters
+        # User parameters
         latlon_reversed = parameters[3].value  # Will be True or False (Default)
         start = CoordConvert(parameters[0].valueAsText).to_osrm_dd(latlon_reversed)
         end = CoordConvert(parameters[2].valueAsText).to_osrm_dd(latlon_reversed)
@@ -127,12 +179,12 @@ class OSRM(object):
         waypoint_geometry = "POINT"
         origin_fc_name = f"osrm_origin_{now}"
         origin_fc = arcpy.CreateFeatureclass_management(
-            default_db, origin_fc_name, waypoint_geometry, spatial_reference=sr)
+            "memory", origin_fc_name, waypoint_geometry, spatial_reference=sr)
         
         destination_fc_name = f"osrm_destination_{now}"
         destination_fc = arcpy.CreateFeatureclass_management(
-            default_db, destination_fc_name, waypoint_geometry, spatial_reference=sr)
-        
+            "memory", destination_fc_name, waypoint_geometry, spatial_reference=sr)
+
         for f in [origin_fc, destination_fc]:
             arcpy.AddField_management(f, "name", "TEXT", field_length=128)
             
@@ -142,155 +194,122 @@ class OSRM(object):
         with arcpy.da.InsertCursor(destination_fc, ["SHAPE@XY", "name"]) as dcur:
             dcur.insertRow([end["point"], end["coordstring"]])
             
-        waypoint_str_coords = []
-        waypoint_layers = []
-        waypoint_layer_count = 1
-        
-        if len(waypoint_dict) > 0:
-            arcpy.SetProgressor("default", "Building Waypoint feature classes...")
-            for k, v in waypoint_dict.items():
-                # key: waypoint feature class name | value: [layer name, coordinate string, point geom]
-                waypoint_str_coords.append(v[1])
-                wp_fc = arcpy.CreateFeatureclass_management(
-                    default_db, k, waypoint_geometry, spatial_reference=sr)
-                arcpy.AddField_management(wp_fc, "name", "TEXT", field_length=128)
-                with arcpy.da.InsertCursor(wp_fc, ["SHAPE@XY", "name"]) as wcur:
-                    wcur.insertRow([v[2], v[1]])
-                waypoint_layers.append([waypoint_layer_count, wp_fc])
-                waypoint_layer_count += 1
-            arcpy.AddMessage(waypoint_layers)
+        if waypoint_dict:
+            if len(waypoint_dict) > 0:
+                arcpy.SetProgressor("default", "Building Waypoint feature classes...")
+                for k, v in waypoint_dict.items():
+                    # key: waypoint feature class name | value: [layer name, coordinate string, point geom]
+                    waypoint_str_coords.append(v["coordstring"])
+                    wp_fc = arcpy.CreateFeatureclass_management(
+                        "memory", k, waypoint_geometry, spatial_reference=sr)
+                    arcpy.AddField_management(wp_fc, "name", "TEXT", field_length=128)
+                    with arcpy.da.InsertCursor(wp_fc, ["SHAPE@XY", "name"]) as wcur:
+                        wcur.insertRow([v["point"], v["coordstring"]])
+                    waypoint_fc_list.append(wp_fc)
             
         # Query OSRM
-        with open(OSRM_CONFIG_FILE, "r") as osrm_cfg:
-            o = json.load(osrm_cfg)
-            urldata = o["URL"]
-            baseurl = urldata["BASE"]
-            p2p_url = urldata["P2P"]
-            p2p_wp_url = urldata["WITH_WAYPOINTS"]
-            p2p_alts_url = urldata["P2P_ALTS"]
-            p2p_alts_wp_url = urldata["WITH_WAYPOINTS_ALTS"]
-            
-            if alts:  # Get alternate routes
-                if len(waypoint_str_coords) > 0:
-                    waypoint_str = ";".join(waypoint_str_coords)
-                    osrm_url = baseurl + (str(p2p_alts_wp_url)
-                                          .replace("_ORIGIN_", origin)
-                                          .replace("_DESTINATION_", destination)
-                                          .replace("_WAYPOINTSTR_", waypoint_str))
+        osrm_url = self.build_url(origin, destination, waypoint_str_coords, alts)
+        arcpy.SetProgressor("default", "Querying OSRM...")
+        arcpy.AddMessage(f"OSRM URL: {osrm_url}")
+        r = requests.get(osrm_url)
+        # Uncomment for PKI usage
+        #r = ArcPKI().get(osrm_url)
+        if r.status_code == 200:
+            arcpy.AddMessage("Got OSRM results.  Parsing...")
+            osrm_r = r.json()
+                
+            route_fc_list = []
+            route_count = 0
+                
+            arcpy.SetProgressor("default", "Building route feature classes...")
+            for route in osrm_r["routes"]:
+                out_name = f"osrm_rt_{route_count}_{now}"
+                geometry_type = "POLYLINE"
+                out_fc = arcpy.CreateFeatureclass_management("memory", out_name, geometry_type, spatial_reference=sr)
+                fields = [
+                    ["distance", "FLOAT"],
+                    ["duration", "FLOAT"]]
+                arcpy.AddFields_management(out_fc, fields)
+                route_count += 1
+                with arcpy.da.InsertCursor(out_fc, ["SHAPE@", "distance", "duration"]) as rcur:
+                    for leg in route["legs"]:
+                        for step in leg["steps"]:
+                            geom = arcpy.AsShape(step["geometry"], False)
+                            dist = step["distance"]
+                            dur = step["duration"]
+                            row = [geom, dist, dur]
+                            rcur.insertRow(row)
+                route_fc_list.append(out_fc)
+                
+            arcpy.SetProgressor("default", "Adding results to map...")
+            routing_lyrs = []
+
+            for idx, rfc in enumerate(route_fc_list):
+                osrm_lyr = self.memory_to_active_map(rfc)
+                routing_lyrs.append(osrm_lyr)
+                if idx == 0:  # First route is primary/optimized route
+                    osrm_lyr.name = "OSRM Route (Primary)"
+                    rsym = osrm_lyr.symbology
+                    rsym.renderer.symbol.size = 4
+                    rsym.renderer.symbol.color = {"RGB": [165, 75, 255, 60]}
+                    osrm_lyr.symbology = rsym
                 else:
-                    osrm_url = baseurl + (str(p2p_alts_url)
-                                          .replace("_ORIGIN_", origin)
-                                          .replace("_DESTINATION_", destination))
-            else:  # Get only primary route
-                if len(waypoint_str_coords) > 0:
-                    waypoint_str = ";".join(waypoint_str_coords)
-                    osrm_url = baseurl + (str(p2p_wp_url)
-                                          .replace("_ORIGIN_", origin)
-                                          .replace("_DESTINATION_", destination)
-                                          .replace("_WAYPOINTSTR_", waypoint_str))
-                else:
-                    osrm_url = baseurl + (str(p2p_url)
-                                          .replace("_ORIGIN_", origin)
-                                          .replace("_DESTINATION_", destination))
-                    
-            arcpy.SetProgressor("default", "Querying OSRM...")
-            arcpy.AddMessage(f"OSRM URL: {osrm_url}")
+                    osrm_lyr.name = "OSRM Route (Alternate)"
+                    rsym = osrm_lyr.symbology
+                    rsym.renderer.symbol.size = 3
+                    rsym.renderer.symbol.color = {"RGB": [40, 40, 90, 30]}
+                    osrm_lyr.symbology = rsym
+                        
+            # Add Destination
+            destination_lyr = self.memory_to_active_map(destination_fc)
+            destination_lyr.name = f"{destination_label} (Destination)"
+            dsym = destination_lyr.symbology
+            dsym.renderer.symbol.size = 9
+            dsym.renderer.symbol.color = {"RGB": [160, 0, 0, 100]}
+            destination_lyr.symbology = dsym
+                
+            # Add Waypoints (if any)
+            if len(waypoint_fc_list) > 0:
+                waypoint_lyrs = []
+                for idx, wl in enumerate(waypoint_layers):
+                    waypoint_lyr = self.memory_to_active_map(wl)
+                    waypoint_lyrs.append(waypoint_lyr)
+                    waypoint_lyr.name = f"Waypoint {str(idx).zfill(2)}"
+                    wsym = waypoint_lyr.symbology
+                    wsym.renderer.symbol.size = 9
+                    wsym.renderer.symbol.color = {"RGB": [242, 239, 15, 100]}
+                    waypoint_lyr.symbology = wsym
+                        
+            # Add Origin
+            origin_lyr = self.memory_to_active_map(origin_fc)
+            origin_lyr.name = f"{origin_label} (Origin)"
+            osym = origin_lyr.symbology
+            osym.renderer.symbol.size = 9
+            osym.renderer.symbol.color = {"RGB": [0, 160, 0, 100]}
+            origin_lyr.symbology = osym
             
-            r = requests.get(osrm_url)
-            # Uncomment for PKI usage
-            #r = ArcPKI().get(osrm_url)
-            if r.status_code == 200:
-                arcpy.AddMessage("Got OSRM results.  Parsing...")
-                osrm_r = r.json()
-                
-                route_fc_list = []
-                route_count = 0
-                routes = osrm_r["routes"]
-                
-                arcpy.SetProgressor("default", "Building route feature classes...")
-                for route in routes:
-                    out_name = f"osrm_rt_{route_count}_{now}"
-                    geometry_type = "POLYLINE"
-                    out_fc = arcpy.CreateFeatureclass_management(default_db, out_name, geometry_type,
-                                                                 spatial_reference=sr)
-                    fields = [
-                        ["distance", "FLOAT"],
-                        ["duration", "FLOAT"]
-                    ]
-                    arcpy.AddFields_management(out_fc, fields)
-                    route_count += 1
-                    
-                    with arcpy.da.InsertCursor(out_fc, ["SHAPE@", "distance", "duration"]) as rcur:
-                        legs = route["legs"]
-                        for leg in legs:
-                            steps = leg["steps"]
-                            for step in steps:
-                                geom = arcpy.AsShape(step["geometry"], False)
-                                dist = step["distance"]
-                                dur = step["duration"]
-                                row = [geom, dist, dur]
-                                rcur.insertRow(row)
-                    route_fc_list.append(out_fc)
-                arcpy.SetProgressor("default", "Adding results to map...")
-                """
-                Group layer management is not working yet
-                grplyrfile = os.path.join(Path(os.path.dirname(__file__)).parent, "res", "New Group Layer.lyrx")
-                grplyr = arcpy.mp.LayerFile(grplyrfile)
-                
-                osrm_group = active_map.addLayer(grplayer)[0]
-                osrm_group.name = f"OSRM {now}"
-                """
-                for idx, rfc in enumerate(route_fc_list):
-                    osrm_lyr = p.activeMap.addDataFromPath(rfc)
-                    if idx == 0:  # First route is primary/optimized route
-                        osrm_lyr.name = "OSRM Route (Primary)"
-                        rsym = osrm_lyr.symbology
-                        rsym.renderer.symbol.size = 4
-                        rsym.renderer.symbol.color = {"RGB": [165, 75, 255, 60]}
-                        osrm_lyr.symbology = rsym
-                    else:
-                        osrm_lyr.name = "OSRM Route (Alternate)"
-                        rsym = osrm_lyr.symbology
-                        rsym.renderer.symbol.size = 3
-                        rsym.renderer.symbol.color = {"RGB": [40, 40, 90, 30]}
-                        osrm_lyr.symbology = rsym
-                        
-                # Add Destination
-                destination_lyr = p.activeMap.addDataFromPath(destination_fc)
-                destination_lyr.name = f"{destination_label} (Destination)"
-                dsym = destination_lyr.symbology
-                dsym.renderer.symbol.size = 9
-                dsym.renderer.symbol.color = {"RGB": [160, 0, 0, 100]}
-                destination_lyr.symbology = dsym
-                
-                # Add Waypoints (if any)
-                if len(waypoint_layers) > 0:
-                    waypoint_layers = reversed(waypoint_layers)
-                    for wl in waypoint_layers:
-                        waypoint_lyr = p.activeMap.addDataFromPath(wl[1])
-                        if wl[0] < 10:
-                            waypoint_lyr.name = f"Waypoint 0{wl[0]}"
-                        else:
-                            waypoint_lyr.name = f"Waypoint {wl[0]}"
-                        wsym = waypoint_lyr.symbology
-                        wsym.renderer.symbol.size = 9
-                        wsym.renderer.symbol.color = {"RGB": [242, 239, 15, 100]}
-                        waypoint_lyr.symbology = wsym
-                        
-                # Add Origin
-                origin_lyr = p.activeMap.addDataFromPath(origin_fc)
-                origin_lyr.name = f"{origin_label} (Origin)"
-                osym = origin_lyr.symbology
-                osym.renderer.symbol.size = 9
-                osym.renderer.symbol.color = {"RGB": [0, 160, 0, 100]}
-                origin_lyr.symbology = osym
-                
-                # Done
-                arcpy.AddMessage("Routing query complete.")
+            # Done, Metrics
+            nl = '\n\t'
+            tb = '\t\t\t'
+            arcpy.AddMessage("---------------------------------------------ROUTE SUMMARY---------------------------------------------")
+            if len(waypoint_fc_list) > 0:
+                arcpy.AddMessage(f"Routing complete: {nl}From {start['coordstring']} ({origin_lyr.name}) {nl}to {end['coordstring']} ({destination_lyr.name}), {nl}{tb}VIA:")
+                self.print_waypoints(waypoint_dict)
             else:
-                arcpy.AddWarning("Could not get OSRM results.")
-                raise ExceptionNetworkFailure
-                
-                
-                
-            
+                arcpy.AddMessage(f"Routing complete: {nl}From {start['coordstring']} ({origin_lyr.name}) {nl}to {end['coordstring']} ({destination_lyr.name})")
+            for route_num, fc in enumerate(route_fc_list):
+                total_time = 0
+                with arcpy.da.SearchCursor(fc, ["duration"]) as cursor:
+                    for row in cursor:
+                        total_time += int(row[0])
+                total_time = str(timedelta(seconds=total_time))
+                if route_num == 0:
+                    route_name = "Primary route"
+                else:
+                    route_name = f"Alternate route {route_num}"
+                    
+                arcpy.AddMessage(f"{route_name} total time: {total_time}")
+            arcpy.AddMessage("---------------------------------------------ROUTE SUMMARY---------------------------------------------")
+        else:
+            arcpy.AddWarning("Could not get OSRM results.")
+            raise ExceptionNetworkFailure
