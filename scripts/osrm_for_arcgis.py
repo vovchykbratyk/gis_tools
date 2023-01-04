@@ -118,8 +118,9 @@ class OSRM(object):
                 
     def memory_to_active_map(self, memory_fc):
         active_map = arcpy.mp.ArcGISProject("CURRENT").activeMap
-        mem_fc_name = arcpy.Describe(memory_fc).name
-        lyr_results = arcpy.MakeFeatureLayer_management(memory_fc, mem_fc_name)
+        lyr_results = arcpy.MakeFeatureLayer_management(
+            memory_fc,
+            arcpy.Describe(memory_fc).name)
         mem_lyr = lyr_results.getOutput(0)
         return active_map.addLayer(mem_lyr)[0]
     
