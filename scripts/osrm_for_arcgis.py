@@ -116,6 +116,28 @@ class OSRM(object):
                                       .replace("_ORIGIN_", origin)
                                       .replace("_DESTINATION_", destination))
                 
+    def get_route_times(self, route_fcs: list):
+        for route_num, fc in enumerate(route_fcs):
+            dur, dist = 0, 0
+            with arcpy.da.SearchCursor(fc, ["distance", "duration"]) as cursor:
+                for row in cursor:
+                    dist += row[0]
+                    dur += row[1]
+            hours, remainder = divmod(timedelta(seconds=dur).total_seconds(), 3600)
+            minutes = divmod(remainder, 60)[0]
+            total_dist_km = dist / 1000
+            total_dist_mi = total_dist_km * 0.62137119223733
+            if route_num == 0:
+                route_name = "Primary route"
+            else:
+                route_name = f"Alternate route {route_num}"
+            yield {
+                "name": route_name,
+                "time": f"{hours}:{minutes}",
+                "km": round(total_dist_km, 2),
+                "miles": round(total_dist_mi, 2)
+            }
+                
     def memory_to_active_map(self, memory_fc):
         active_map = arcpy.mp.ArcGISProject("CURRENT").activeMap
         lyr_results = arcpy.MakeFeatureLayer_management(
@@ -289,27 +311,32 @@ class OSRM(object):
             osym.renderer.symbol.color = {"RGB": [0, 160, 0, 100]}
             origin_lyr.symbology = osym
             
+            # Move to group layer
+            m = arcpy.mp.ArcGISProject("CURRENT").activeMap
+            empty_group = arcpy.mp.LayerFile(
+                os.path.join(Path(os.path.dirname(__file__)).parent, "res", "New Group Layer.lyrx"))
+            group = m.addLayer(empty_group, "TOP")[0]
+            group.name = f"OSRM Route: {now}"
+            if len(waypoint_fc_list) > 0:
+                ordered_lyrs = routing_lyrs + [destination_lyr] + waypoint_lyrs + [origin_lyr]
+            else:
+                ordered_lyrs = routing_lyrs + [destination_lyr, origin_lyr]
+            for lyr in ordered_lyrs:
+                m.addLayerToGroup(group, lyr)
+                m.removeLayer(lyr)
+            
             # Done, Metrics
             nl = '\n\t'
             tb = '\t\t\t'
             arcpy.AddMessage("---------------------------------------------ROUTE SUMMARY---------------------------------------------")
             if len(waypoint_fc_list) > 0:
-                arcpy.AddMessage(f"Routing complete: {nl}From {start['coordstring']} ({origin_lyr.name}) {nl}to {end['coordstring']} ({destination_lyr.name}), {nl}{tb}VIA:")
+                arcpy.AddMessage(f"Routing complete: {nl}From {start['coordstring']} ({origin_name}) {nl}to {end['coordstring']} ({destination_name}), {nl}{tb}VIA:")
                 self.print_waypoints(waypoint_dict)
             else:
-                arcpy.AddMessage(f"Routing complete: {nl}From {start['coordstring']} ({origin_lyr.name}) {nl}to {end['coordstring']} ({destination_lyr.name})")
-            for route_num, fc in enumerate(route_fc_list):
-                total_time = 0
-                with arcpy.da.SearchCursor(fc, ["duration"]) as cursor:
-                    for row in cursor:
-                        total_time += int(row[0])
-                total_time = str(timedelta(seconds=total_time))
-                if route_num == 0:
-                    route_name = "Primary route"
-                else:
-                    route_name = f"Alternate route {route_num}"
-                    
-                arcpy.AddMessage(f"{route_name} total time: {total_time}")
+                arcpy.AddMessage(f"Routing complete: {nl}From {start['coordstring']} ({origin_name}) {nl}to {end['coordstring']} ({destination_name})")
+            route_stats = self.get_route_times(route_fc_list)
+            for r in route_stats:
+                arcpy.AddMessage(f"{r['name']} | Total time: {r['time']} | Total distance: {r['km']} KM ({r['miles']} Miles)")
             arcpy.AddMessage("---------------------------------------------ROUTE SUMMARY---------------------------------------------")
         else:
             arcpy.AddWarning("Could not get OSRM results.")
