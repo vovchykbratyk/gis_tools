@@ -12,7 +12,6 @@ Limitations:
 
 import arcpy
 import os
-from pathlib import Path
 import sys
 
 # Disable cache file writing
@@ -190,28 +189,13 @@ class UTMizer(object):
     
     def get_extent_centroid(self, layer):
         gcs_sr = arcpy.SpatialReference(4326)
-        extent = arcpy.Describe(layer).extent.projectAs(gcs_sr)
-        centroid = arcpy.Polygon(
-            arcpy.Array(
-                [
-                    extent.lowerLeft,
-                    extent.lowerRight,
-                    extent.upperRight,
-                    extent.upperLeft,
-                    extent.lowerLeft
-                ]
-            ), spatial_reference=gcs_sr
-        ).centroid
-        
-        return centroid
+        return arcpy.Describe(layer).extent.polygon.projectAs(gcs_sr).centroid
     
     def execute(self, parameters, messages):
         
         # Environments
         p = arcpy.mp.ArcGISProject("CURRENT")
         activeMap = p.activeMap
-        home_folder = Path(p.homeFolder).resolve()
-        d = p.defaultGeodatabase
         arcpy.env.overwriteOutput = True
         
         # Do the work
@@ -229,7 +213,7 @@ class UTMizer(object):
             center = self.get_extent_centroid(in_lyr)
             
             center_fc = arcpy.CreateFeatureclass_management(
-                r"in_memory", "layercenter", "POINT", spatial_reference=gcs)
+                "memory", "layercenter", "POINT", spatial_reference=gcs)
             
             center_row = [(center.X, center.Y)]
             arcpy.AddMessage(f"Layer centroid: {center.Y}, {center.X}")
@@ -239,7 +223,7 @@ class UTMizer(object):
             arcpy.SetProgressor("default", "Running spatial join...")
             center_fc_layer = arcpy.MakeFeatureLayer_management(center_fc, "center_fc_lyr")
             utm_fc_layer = arcpy.MakeFeatureLayer_management(utm_fc, "utm_fc_lyr")
-            sj = arcpy.analysis.SpatialJoin(center_fc_layer, utm_fc_layer, os.path.join(r"in_memory", "sj"))
+            sj = arcpy.analysis.SpatialJoin(center_fc_layer, utm_fc_layer, os.path.join("memory", "sj"))
             
             arcpy.SetProgressor("default", "Getting UTM EPSG code...")
             epsg = None
