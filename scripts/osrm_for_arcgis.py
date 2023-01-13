@@ -14,12 +14,12 @@ UTILS_DIR = os.path.join(os.path.dirname(__file__), "utils")
 
 # Local imports
 sys.path.append(UTILS_DIR)
-from utils import arcpki
-from utils import coordconvert
+from utils import arcpki, coordconvert, esriWKT2OGC
+from utils.exceptions import ExceptionNetworkFailure
 
 ArcPKI = arcpki.ArcPKI
 CoordConvert = coordconvert.CoordConvert
-from utils.exceptions import ExceptionNetworkFailure
+EsriWKT2OGC = esriWKT2OGC.EsriWKT2OGC
 
 
 class OSRM(object):
@@ -294,7 +294,7 @@ class OSRM(object):
             # Add Waypoints (if any)
             if len(waypoint_fc_list) > 0:
                 waypoint_lyrs = []
-                for idx, wl in enumerate(waypoint_layers):
+                for idx, wl in enumerate(waypoint_fc_list):
                     waypoint_lyr = self.memory_to_active_map(wl)
                     waypoint_lyrs.append(waypoint_lyr)
                     waypoint_lyr.name = f"Waypoint {str(idx).zfill(2)}"
@@ -330,10 +330,10 @@ class OSRM(object):
             tb = '\t\t\t'
             arcpy.AddMessage("---------------------------------------------ROUTE SUMMARY---------------------------------------------")
             if len(waypoint_fc_list) > 0:
-                arcpy.AddMessage(f"Routing complete: {nl}From {start['coordstring']} ({origin_name}) {nl}to {end['coordstring']} ({destination_name}), {nl}{tb}VIA:")
+                arcpy.AddMessage(f"Routing complete: {nl}From {start['coordstring']} ({origin_label}) {nl}to {end['coordstring']} ({destination_label}), {nl}{tb}VIA:")
                 self.print_waypoints(waypoint_dict)
             else:
-                arcpy.AddMessage(f"Routing complete: {nl}From {start['coordstring']} ({origin_name}) {nl}to {end['coordstring']} ({destination_name})")
+                arcpy.AddMessage(f"Routing complete: {nl}From {start['coordstring']} ({origin_label}) {nl}to {end['coordstring']} ({destination_label})")
             route_stats = self.get_route_times(route_fc_list)
             for r in route_stats:
                 arcpy.AddMessage(f"{r['name']} | Total time: {r['time']} | Total distance: {r['km']} KM ({r['miles']} Miles)")
