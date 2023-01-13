@@ -1,3 +1,11 @@
+"""
+Area Max Rise Over Run (AMROR) brings efficiency to artillery units by enabling them
+to provide a general deployment area, a firing distance, and an azimuth.  The tool takes
+a surface raster, a terrain (bare earth) raster and user parameters to provide a gridded
+raster with maximum inclination values expressed in mils.
+
+
+"""
 import arcpy
 
 arcpy.CheckOutExtension("Spatial")
@@ -317,12 +325,12 @@ class AreaMaxRiseOverRun(object):
         
         with arcpy.da.UpdateCursor(samplepoints, ["OID@", "ORIG_FID", "from_origin", "curvature"]) as uc:
             for row in uc:
-                if u_row[1] in sp_with_intervals.keys():
-                    for n_row in sp_with_intervals[u_row[1]]:
-                        if n_row[0] == u_row[0]:  # Check OID alignment
-                            u_row[2] = n_row[2]
-                            u_row[3] = self.curvature(sample_distance=u_row[2])
-                uc.updateRow(u_row)
+                if row[1] in sp_with_intervals.keys():
+                    for n_row in sp_with_intervals[row[1]]:
+                        if n_row[0] == row[0]:  # Check OID alignment
+                            row[2] = n_row[2]
+                            row[3] = self.curvature(sample_distance=row[2])
+                uc.updateRow(row)
         del uc
         
         # Copy over DSM campled values to samplepoints
