@@ -7,6 +7,7 @@ A collection of geospatial tools aimed at Army users for doing various Army thin
 * UTMizer _(Conversions)_
 * Small Arms Range Rings _(Force Protection)_
 * Solve Route with OSRM _(Routing)_
+* Create Distance Matrix with OSRM _(Routing)_
 * Query GETS Structured Object Data _(Research)_
 * Query Ground Photography _(Research)_
 * Query iSpy Coverage _(Research)_
