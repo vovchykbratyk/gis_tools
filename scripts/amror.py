@@ -4,7 +4,9 @@ to provide a general deployment area, a firing distance, and an azimuth.  The to
 a surface raster, a terrain (bare earth) raster and user parameters to provide a gridded
 raster with maximum inclination values expressed in mils.
 
-
+Credits:
+Original idea implemented in R by M. Ekegren @ CRREL
+Ported to python and implemented in ArcGIS by E. Eagle @ INSCOM
 """
 import arcpy
 
