@@ -59,9 +59,9 @@ class CHM(object):
         arcpy.CheckOutExtension('Spatial')
         arcpy.env.overwriteOutput = True
 
-        m = arcpy.mp.ArcGISProject('CURRENT')
-        db = m.defaultGeodatabase
-        activemap = m.activeMap
+        p = arcpy.mp.ArcGISProject('CURRENT')
+        db = p.defaultGeodatabase
+        m = p.activeMap
 
         dsm = parameters[0].valueAsText
         r = arcpy.Raster(dsm)
@@ -70,40 +70,37 @@ class CHM(object):
 
         dsm_ll = arcpy.Describe(dsm).Extent.lowerLeft
         dtm = parameters[1].valueAsText
-        outname = parameters[2].valueAsText
+        out_raster = os.path.join(db, parameters[2].valueAsText)
         mem = parameters[3].value
 
         if mem:
-            # We are going to use numpy arrays to do raster math and avoid IO drag
+            # Use numpy arrays for great speed...
+            arcpy.SetProgressor('default', 'Converting rasters to arrays...')
             dsm_arr = arcpy.RasterToNumPyArray(dsm, nodata_to_value=0)
             dtm_arr = arcpy.RasterToNumPyArray(dtm, nodata_to_value=0)
+            arcpy.SetProgressor('default', 'Doing math...')
             diff_arr = dsm_arr - dtm_arr
-            # Reclassification
-            rm = [0.0, 1.8]
-            bins = [float(x) for x in range(0,900,2)]
-            bins = np.array(rm + bins[2:])
-            recl = np.digitize(diff_arr, bins, right=False)
-
-            # Make it a raster and save it
-            diff = arcpy.NumPyArrayToRaster(recl, dsm_ll, cell_size_x, cell_size_y, value_to_nodata=0)
-            diff.save(os.path.join(db, outname))
+            diff_arr[np.where(diff_arr < 1.8)] = 0
+            diff = arcpy.NumPyArrayToRaster(
+                diff_arr,
+                dsm_ll,
+                cell_size_x,
+                cell_size_y,
+                value_to_nodata=0)
+            diff.save(out_raster)
         else:
-            # Using scratchGDB to perform reclass with intermediate dataasets
-            scratch = arcpy.env.scratchGDB
-            diff_ras = RasterCalculator([dsm, dtm], ['surface', 'bare'], 'surface-bare')
-            diff_ras_out = os.path.join(scratch, 'diff_full')
-            diff_ras.save(diff_ras_out)
-            # Remap values
-            rm = [[-9999,1.8,'NODATA'],[1.8,4.0,1]]  # Set up the first two catch-all values
-            bins = [[float(s),float(s+2),i] for i, s in enumerate(range(0,900,2))]  # Go out to around 900m at 2m increments, just in case
-            rm = rm + bins[2:]
-            reclassed = Reclassify(diff_ras_out, 'Value', RemapRange(rm))
-            reclassed.save(os.path.join(db, outname))
+            # ...or raster calculator for great stability
+            arcpy.SetProgressor('default', 'Doing raster math...')
+            diff_calc = RasterCalculator([dsm, dtm], ['surface', 'bare'], 'surface-bare')
+            arcpy.SetProgressor('default', 'Setting null values...')
+            diff = SetNull(diff_calc, diff_calc, 'Value < 1.8')
+            diff.save(out_raster)
 
-
-
-
-
-
-
-
+        chm_lyr = m.addDataFromPath(out_raster)
+        sym = chm_lyr.symbology
+        sym.updateColorizer('RasterClassifyColorizer')
+        sym.colorizer.classificationField = 'Value'
+        sym.colorizer.breakCount = 16
+        sym.colorizer.colorRamp = p.listColorRamps('Condition Number')[0]
+        sym.colorizer.noDataColor = {'RGB': [0, 0, 0, 0]}
+        chm_lyr.symbology = sym
