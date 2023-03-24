@@ -11,7 +11,8 @@ WFS_CONFIG_FILE = os.path.join(Path(os.path.dirname(__file__)).parent, "cfg", "w
 # Local imports
 sys.dont_write_bytecode = True
 sys.path.append(os.path.dirname(__file__))
-from arcpki import ArcPKI
+from scripts.utils import arcpki
+ArcPKI = arcpki.ArcPKI
 
 
 def wfsconfig(config_file):
