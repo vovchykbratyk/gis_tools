@@ -1,0 +1,32 @@
+class: WFS
+    method: init
+        params: url
+            url properties:
+                datatype: str
+                description: WFS endpoint (without GetCapabilities)
+        property: layer_list
+            layer_list properties:
+                datatype: list
+                description: nested list of [[database, table, length]...]
+                derived: from _getLayers()
+        property: isHigh
+            isHigh properties:
+                datatype: boolean
+                description: returns True if .ic.gov is recognized in self.url, otherwise False
+                derived: from _isHigh()
+    method: _getLayers()
+        params: self.url
+        params: version (1.0.0, 1.1.0, 2.0)
+        returns: list of accessible feature layers on server
+    method: _isHigh()
+        params: self.url
+        returns: True (if ic.gov), otherwise False
+    method: request
+        params: type, payload
+            type properties:
+                datatype: str
+                values: "GET", "POST"
+            payload properties:
+                datatype: str
+                values: xml (if type="POST"), url-encoded str (if type="GET")
+
