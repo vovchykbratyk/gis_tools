@@ -75,6 +75,7 @@ class CHM(object):
 
         if mem:
             # Use numpy arrays for great speed...
+            arcpy.env.outputCoordinateSystem = dsm
             arcpy.SetProgressor('default', 'Converting rasters to arrays...')
             dsm_arr = arcpy.RasterToNumPyArray(dsm, nodata_to_value=0)
             dtm_arr = arcpy.RasterToNumPyArray(dtm, nodata_to_value=0)
