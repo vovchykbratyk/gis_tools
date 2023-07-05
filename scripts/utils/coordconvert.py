@@ -44,8 +44,6 @@ class CoordConvert:
         """
         Take input coordinate and notation and output decimal degree
         notation in {longitude},{latitude} string.
-        
-        Uses ArcPKI for calls to BE lookup
         """
         osrm_dd = {}
         in_type = self.coord_type[1]
