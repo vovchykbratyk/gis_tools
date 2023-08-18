@@ -269,7 +269,7 @@ class TerrainImageToCollada(object):
                         arcpy.AddMessage(f"Processing feature {oid + 1} of {feature_count}.")
                         # Testing fishnetted processing on very high quality requests | 2023-08-18 | E. Eagle
                         if z_sensitivity < 1:
-                            rows, cols = 4, 4
+                            rows, cols = 4, 4  # For very dense posts even over a limited area we break it into chunks
                         else:
                             rows, cols = self.set_rows_and_cols(geom.area)
                         if oid < 10: oid = f"0{oid}"
