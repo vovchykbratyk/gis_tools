@@ -267,7 +267,11 @@ class TerrainImageToCollada(object):
                         geom, oid = row
                         geom = geom.projectAs(processing_sr)
                         arcpy.AddMessage(f"Processing feature {oid + 1} of {feature_count}.")
-                        rows, cols = self.set_rows_and_cols(geom.area)
+                        # Testing fishnetted processing on very high quality requests | 2023-08-18 | E. Eagle
+                        if z_sensitivity < 1:
+                            rows, cols = 4, 4
+                        else:
+                            rows, cols = self.set_rows_and_cols(geom.area)
                         if oid < 10: oid = f"0{oid}"
                         job_out_path = os.path.join(out_folder, f"AOI_{oid}")
                         if not os.path.exists(job_out_path): os.makedirs(job_out_path)
