@@ -333,7 +333,7 @@ class AreaMaxRiseOverRun(object):
             dtm_sampled,
             'incline_mil',
             out_raster,
-            cell_assigment='MEAN',
+            cell_assignment='MEAN',
             cellsize=cellsize
         )
         
