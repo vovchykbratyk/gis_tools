@@ -1,0 +1,20 @@
+{
+	"platforms": {
+		"UH-60 Blackhawk": {
+			"reclass": [[0, 7, 1], [7, 15, 2], [15, 100, 3]],
+			"shortname": "UH60_HLZ_Slope",
+			"clearance": "25 Meters",
+			"fc_name": "UH60_50m"
+		},
+		"CH-47 Chinook": {
+			"reclass": [[0, 12, 1], [12, 17, 2], [17, 100, 3]],
+			"shortname": "CH47_HLZ_Slope",
+			"clearance": "40 Meters",
+			"fc_name": "CH47_80m"
+		}
+	},
+	"remaps": {
+		"lulc": [[0, "NODATA"], [1, 3], [2, 3], [3, 3], [4, 1], [5, 1], [6, 3], [7, 1], [8, 3], [9, 3], [10, 3], [11, 3]],
+		"vobs": [[1, 1000, 3], ["NODATA", 1]]
+	}
+}
