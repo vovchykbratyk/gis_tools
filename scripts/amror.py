@@ -35,8 +35,8 @@ class AreaMaxRiseOverRun(object):
         pdata = [
             ['Area of Operations', 'area_of_operations', 'GPString', 'Required', 'Input'],
             ['AO Layer', 'ao_layer', 'GPFeatureLayer', 'Optional', 'Input'],
-            ['Surface Raster (DSM)', 'surface_raster', 'GPRasterLayer', 'Required', 'Input'],
-            ['Bare Earth Raster (DTM)', 'terrain_raster', 'GPRasterLayer', 'Required', 'Input'],
+            ['Surface Raster (DSM)', 'surface_raster', ['GPRasterLayer', 'GPRasterDataLayer', 'GPMapServerLayer', 'DEImageServer', 'GPMosaicLayer'], 'Required', 'Input'],
+            ['Bare Earth Raster (DTM)', 'terrain_raster', ['GPRasterLayer', 'GPRasterDataLayer', 'GPMapServerLayer', 'DEImageServer', 'GPMosaicLayer'], 'Required', 'Input'],
             ['Cell Size (meters)', 'cell_size', 'GPLong', 'Required', 'Input'],
             ['Distance (meters)', 'distance', 'GPLong', 'Required', 'Input'],
             ['Bearing (degrees)', 'bearing', 'GPLong', 'Required', 'Input'],
