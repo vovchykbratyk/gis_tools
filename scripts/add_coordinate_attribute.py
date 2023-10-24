@@ -58,7 +58,6 @@ class CoordsToAttributeTable(object):
         d = arcpy.Describe(in_fc)
         fc_path = d.path
         in_fc_srs = d.spatialReference
-        out_srs = arcpy.SpatialReference(4326)
         gdb_search = re.compile(r"(^._\.gdb).+")
         find_gdb = gdb_search.search(fc_path)
         if find_gdb:
