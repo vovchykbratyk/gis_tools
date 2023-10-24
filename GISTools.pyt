@@ -17,6 +17,7 @@ import scripts.utmizer
 CoordsToAttributeTable = scripts.add_coordinate_attribute.CoordsToAttributeTable
 AMROR = scripts.amror.AreaMaxRiseOverRun
 CHM = scripts.canopy.CHM
+HLZ = scripts.hlz_suitability.HLZ
 SmallArmsRangeRings = scripts.small_arms_range_rings.SmallArmsRangeRings
 TerrainImageToCollada = scripts.terrain_and_image_to_collada.TerrainImageToCollada
 UTMizer = scripts.utmizer.UTMizer
@@ -33,6 +34,7 @@ class Toolbox(object):
             AMROR,
             CHM,
             CoordsToAttributeTable,
+            HLZ,
             SmallArmsRangeRings,
             TerrainImageToCollada,
             UTMizer
