@@ -32,12 +32,14 @@ In a `arcgispro-py3` Python prompt, do:
 
 `pip install --user requests_pkcs12`
 
-Then,
+Then (if using git),
 
 `git clone https://github.com/vovchykbratyk/gis_tools.git`
 
-Add the folder containing `GISTools.pyt` to a project.
+or, (if not using git), just do **Code** --> **Download Zip** from this repo's landing page.
 
+Add the folder containing `GISTools.pyt` to a project.
+<br/><br/>
 ### On some other network ###
 
 In a Powershell session, do...
