@@ -3,8 +3,7 @@
 A collection of geospatial tools aimed at Army users for doing various Army things.  These tools 
 
 
-* Terrain & Image to Collada Model _(3D Utilities)_
-
+* Terrain & Image to Collada Model _(3D Utilities)_<br/><br/>
 * Area Maximum Rise Over Run (AMROR) _(Analysis)_<br/>
 * Build Cross Country Mobility Raster _(Analysis)_<br/>
 * Create Canopy Height Model _(Analysis)_<br/>
