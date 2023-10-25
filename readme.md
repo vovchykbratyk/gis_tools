@@ -1,24 +1,35 @@
 # IGEA GIS Tools
 
-A collection of geospatial tools aimed at Army users for doing various Army things.  These tools 
+A collection of geospatial tools aimed at Army users for doing various Army things.
 
 
-* Terrain & Image to Collada Model _(3D Utilities)_<br/><br/>
+* Terrain & Image to Collada Model _(3D Utilities)_<br/>
+** Converts a terrain source and an associated image to a Collada and a texture.<br/><br/>
 * Area Maximum Rise Over Run (AMROR) _(Analysis)_<br/>
+** Calculate the maximum angle of inclination over a distance and azimuth for each cell in an area.<br/>
 * Build Cross Country Mobility Raster _(Analysis)_<br/>
+** Builds a cost raster from several weighted inputs.<br/>
 * Create Canopy Height Model _(Analysis)_<br/>
+** Derives a canopy height model (CHM) from a Digital Surface Model (DSM).<br/>
 * Helicopter Landing Zone Suitability _(Analysis)_<br/>
-* Small Arms Range Rings _(Analysis)_<br/><br/>
+** Determine suitable areas for landing helicopters with support for avoiding obstacles contained in both raster and vector data types.<br/>
+* Small Arms Range Rings _(Analysis)_<br/>
+** Rough visualization of small arms ranges based on various national arms inventories.<br/><br/>
 * Add Coordinates to Attribute Table _(Conversions)_<br/>
-* UTMizer _(Conversions)_<br/><br/>
+** Does just what it says.  Adds lat/lon and MGRS as fields in a point feature class.<br/>
+* UTMizer _(Conversions)_<br/>
+** Automatically projects data (raster or vector) to an appropriate UTM zone.<br/>
+<br/><br/>
 * Query GETS Structured Object Data _(Research)_<br/>
+** Placeholder.<br/>
 * Query Ground Photography _(Research)_<br/>
-* Query iSpy Coverage _(Research)_<br/><br/>
+** Placeholder. <br/>
+* Query iSpy Coverage _(Research)_<br/>
+** Placeholder.<br/><br/>
 * Solve Route with OSRM _(Routing)_<br/>
-* Create Distance Matrix with OSRM _(Routing)_<br/><br/>
-
-
-
+** Allows user to solve routes quickly using an Open Source Routing Machine (OSRM) instance.<br/>
+* Create Distance Matrix with OSRM _(Routing)_<br/>
+** Solve Traveling Salesman Problem (TSP) routes using an OSRM instance.<br/><br/><br/>
 
 ## Installation and Dependencies
 
