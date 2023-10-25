@@ -202,7 +202,7 @@ class SmallArmsRangeRings(object):
         """
         Calculate multiple range rings based on common USA/NATO or Russian small arms.
         """
-        self.category = "Force Protection"
+        self.category = "Analysis"
         self.name = "SmallArmsRangeRings"
         self.label = "Small Arms Range Rings"
         self.description = "Calculates multiple range rings based on common USA/NATO or Russian small arms."
