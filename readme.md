@@ -5,21 +5,18 @@ A collection of geospatial tools aimed at Army users for doing various Army thin
 
 * Terrain & Image to Collada Model _(3D Utilities)_
 
-* Area Maximum Rise Over Run (AMROR) _(Analysis)_
-* Build Cross Country Mobility Raster _(Analysis)_
-* Create Canopy Height Model _(Analysis)_
-* Helicopter Landing Zone Suitability _(Analysis)_
-* Small Arms Range Rings _(Analysis)_
-
-* Add Coordinates to Attribute Table _(Conversions)_
-* UTMizer _(Conversions)_
-
-* Query GETS Structured Object Data _(Research)_
-* Query Ground Photography _(Research)_
-* Query iSpy Coverage _(Research)_
-
-* Solve Route with OSRM _(Routing)_
-* Create Distance Matrix with OSRM _(Routing)_
+* Area Maximum Rise Over Run (AMROR) _(Analysis)_<br/>
+* Build Cross Country Mobility Raster _(Analysis)_<br/>
+* Create Canopy Height Model _(Analysis)_<br/>
+* Helicopter Landing Zone Suitability _(Analysis)_<br/>
+* Small Arms Range Rings _(Analysis)_<br/><br/>
+* Add Coordinates to Attribute Table _(Conversions)_<br/>
+* UTMizer _(Conversions)_<br/><br/>
+* Query GETS Structured Object Data _(Research)_<br/>
+* Query Ground Photography _(Research)_<br/>
+* Query iSpy Coverage _(Research)_<br/><br/>
+* Solve Route with OSRM _(Routing)_<br/>
+* Create Distance Matrix with OSRM _(Routing)_<br/><br/>
 
 
 
