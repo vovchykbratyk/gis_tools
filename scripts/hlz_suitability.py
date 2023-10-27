@@ -36,12 +36,12 @@ REMAPS = CFG["remaps"]
 
 class HLZSuitability(object):
 	def __init__(self):
-		"""Creates Slope from DSM or DEM for suitable helocopter landing zones within a study area."""
+		"""Creates slope from DSM or DEM for suitable helicopter landing zones within a study area."""
 		self.category = 'Analysis'
 		self.name = 'HLZSuitabilityAnalysis',
 		self.label = 'HLZ Suitability Analysis'
 		self.alias = 'HLZ Suitability Analysis',
-		self.description = 'Calculates slop to reclass values to identify suitable areas for helocopter landing operations for CH-47 and UH-60 rotary wing aircraft.'
+		self.description = 'Identifies suitable areas for helicopter landing operations'
 		self.canRunInBackground = False
 
 	def getParameterInfo(self):
@@ -167,7 +167,8 @@ class HLZSuitability(object):
 			output_slope_measurement='DEGREE')
 		arcpy.AddMessage('Created slope...')
 
-		# Reclass Slope
+		# Storing outputs in a dictionary makes it easier to do
+		# conditional processing later
 		rasters = {
 			"slopes": [],
 			"optional": {
@@ -202,7 +203,7 @@ class HLZSuitability(object):
 		if lulc:
 			arcpy.SetProgressor('default', 'Adding landcover data...')
 			arcpy.AddMessage('Adding landcover data.')
-			land_fact = Reclassify(lulc, 'VALUE', RemapValue(REMAPS["lulc"], 'NODATA'))
+			land_fact = Reclassify(lulc, 'VALUE', RemapValue(REMAPS["lulc"]), 'NODATA')
 			land_fact.save("HLZ_LULC")
 			rasters['optional']['land_cover'] = land_fact
 		
@@ -213,23 +214,6 @@ class HLZSuitability(object):
 			vert_obs = Reclassify(vert_ras, 'VALUE', RemapRange(REMAPS["vobs"]))
 			vert_obs.save("OBS_RAS")
 			rasters['optional']['vertical_obstructions'] = vert_obs
-		
-		"""
-		Now we have a dictionary that looks like
-		{
-		    "slopes": [
-			    slope1,
-				slope2
-			],
-			"optional": {
-			    "land_cover": land_fact (or could be None),
-				"vertical_obstructions": vert_obs (or could be None)
-			}
-		}
-
-		We can run against one slope only but can write it to add in
-		the extras if they're there in one loop
-		"""
 
 		options = rasters['optional']
 		extras_list = [i for i in options.values() if i]
