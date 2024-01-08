@@ -145,13 +145,13 @@ class TerrainImageToCollada(object):
 
     def set_rows_and_cols(self, area):
         if area <= 50000:
-            return 1, 1
-        elif area > 50000 and area <= 100000:
             return 2, 2
-        elif area > 100000 and area <= 150000:
+        elif area > 50000 and area <= 100000:
             return 3, 3
-        elif area > 150000:
+        elif area > 100000 and area <= 150000:
             return 4, 4
+        elif area > 150000:
+            return 6, 6
 
     def set_z_sensitivity(self, sensitivity: str):
         if sensitivity == "Low (Z Sensitivity: 2)":
@@ -269,7 +269,7 @@ class TerrainImageToCollada(object):
                         arcpy.AddMessage(f"Processing feature {oid + 1} of {feature_count}.")
                         # Testing fishnetted processing on very high quality requests | 2023-08-18 | E. Eagle
                         if z_sensitivity < 1:
-                            rows, cols = 4, 4  # For very dense posts even over a limited area we break it into chunks
+                            rows, cols = 6, 6  # For very dense posts even over a limited area we break it into chunks
                         else:
                             rows, cols = self.set_rows_and_cols(geom.area)
                         if oid < 10: oid = f"0{oid}"
