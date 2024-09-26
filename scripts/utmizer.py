@@ -3,11 +3,7 @@ Purpose:
     This script automatically projects a dataset (raster or vector) to an appropriate UTM zone.
     
 Limitations:
-    Use common sense.  It's intended for local/regional datasets that make sense being
-    projected to UTM.
-    I haven't tested it against GeoPackage tables but there's no reason it won't work as ArcGIS
-    does recognize them as feature classes.
-    Does not work with KML.  Sorry.  Stop using KML.
+    Does not work with KML.
 """
 
 import arcpy
